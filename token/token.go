@@ -5,8 +5,9 @@ type Type string
 
 // Token contains a token.
 type Token struct {
-	Type    Type
-	Literal string
+	Type     Type
+	Literal  string
+	Row, Col int
 }
 
 // Token types.
@@ -33,13 +34,13 @@ const (
 )
 
 // NewC initializes a Token with a character.
-func NewC(t Type, ch byte) Token {
-	return Token{t, string(ch)}
+func NewC(t Type, ch byte, row, col int) Token {
+	return Token{t, string(ch), row, col}
 }
 
 // NewS initializes a Token with a string.
-func NewS(t Type, s string) Token {
-	return Token{t, s}
+func NewS(t Type, s string, row, col int) Token {
+	return Token{t, s, row, col}
 }
 
 var keywords = map[string]Type{
