@@ -52,7 +52,7 @@ func (l *Lexer) NextToken() token.Token {
 	case '=':
 		tok = token.NewC(token.ASSIGN, l.ch, l.row, l.col)
 		if nc := l.peekChar(); nc == '=' {
-			tok = token.NewS(token.EQ, string(l.ch)+string(nc), l.row, l.col)
+			tok = token.New(token.EQ, string(l.ch)+string(nc), l.row, l.col)
 			l.readChar()
 		}
 	case '+':
@@ -62,7 +62,7 @@ func (l *Lexer) NextToken() token.Token {
 	case '!':
 		tok = token.NewC(token.BANG, l.ch, l.row, l.col)
 		if nc := l.peekChar(); nc == '=' {
-			tok = token.NewS(token.NEQ, string(l.ch)+string(nc), l.row, l.col)
+			tok = token.New(token.NEQ, string(l.ch)+string(nc), l.row, l.col)
 			l.readChar()
 		}
 	case '*':
@@ -86,15 +86,15 @@ func (l *Lexer) NextToken() token.Token {
 	case '}':
 		tok = token.NewC(token.RBRACE, l.ch, l.row, l.col)
 	case 0:
-		tok = tokenNewS(token.EOF, "", l.row, l.col)
+		tok = token.New(token.EOF, "", l.row, l.col)
 	default:
 		if isLetter(l.ch) {
 			lit := l.readIdentifier()
 			t := token.LookupIdent(lit)
-			return tokenNewS(t, lit, l.row, l.col)
+			return tokenNewIdent(t, lit, l.row, l.col)
 		}
 		if isDigit(l.ch) {
-			return tokenNewS(token.INT, l.readNumber(), l.row, l.col)
+			return tokenNewIdent(token.INT, l.readNumber(), l.row, l.col)
 		}
 		tok = token.NewC(token.ILLEGAL, l.ch, l.row, l.col)
 	}
@@ -102,8 +102,9 @@ func (l *Lexer) NextToken() token.Token {
 	return tok
 }
 
-func tokenNewS(t token.Type, s string, row, col int) token.Token {
-	return token.NewS(t, s, row, col-len(s))
+// tokenNewIdent does token.New and set token.Token.Col to the first charactor of the given s.
+func tokenNewIdent(t token.Type, s string, row, col int) token.Token {
+	return token.New(t, s, row, col-len(s))
 }
 
 func (l *Lexer) readChar() {

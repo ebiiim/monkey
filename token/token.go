@@ -48,14 +48,14 @@ const (
 	RETURN   = "return"
 )
 
-// NewC initializes a Token with a character.
-func NewC(t Type, ch byte, row, col int) Token {
-	return Token{t, string(ch), row, col}
+// New initializes a Token with a string.
+func New(t Type, s string, row, col int) Token {
+	return Token{t, s, row, col}
 }
 
-// NewS initializes a Token with a string.
-func NewS(t Type, s string, row, col int) Token {
-	return Token{t, s, row, col}
+// NewC initializes a Token with a character in byte.
+func NewC(t Type, ch byte, row, col int) Token {
+	return New(t, string(ch), row, col)
 }
 
 var keywords = map[string]Type{
