@@ -18,8 +18,18 @@ const (
 	IDENT = "IDENT" // add, foobar, x, y, ...
 	INT   = "INT"   // 123456
 
-	ASSIGN = "="
-	PLUS   = "+"
+	ASSIGN   = "="
+	PLUS     = "+"
+	MINUS    = "-"
+	BANG     = "!"
+	ASTERISK = "*"
+	SLASH    = "/"
+
+	LT = "<"
+	GT = ">"
+
+	EQ  = "=="
+	NEQ = "!="
 
 	COMMA     = ","
 	SEMICOLON = ";"
@@ -31,6 +41,11 @@ const (
 
 	FUNCTION = "fn"
 	LET      = "let"
+	TRUE     = "true"
+	FALSE    = "false"
+	IF       = "if"
+	ELSE     = "else"
+	RETURN   = "return"
 )
 
 // NewC initializes a Token with a character.
@@ -46,6 +61,11 @@ func NewS(t Type, s string, row, col int) Token {
 var keywords = map[string]Type{
 	FUNCTION: FUNCTION,
 	LET:      LET,
+	TRUE:     TRUE,
+	FALSE:    FALSE,
+	IF:       IF,
+	ELSE:     ELSE,
+	RETURN:   RETURN,
 }
 
 // LookupIdent finds type of an identifier.
