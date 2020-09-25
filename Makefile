@@ -1,4 +1,4 @@
-all: test
+all: test build
 
 test:
 	go test -race -cover ./...
