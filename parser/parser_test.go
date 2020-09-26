@@ -99,3 +99,49 @@ let foobar = 123456;
 		})
 	}
 }
+
+func TestReturnStatement(t *testing.T) {
+	cases := []struct {
+		name          string
+		input         string
+		numStatements int
+	}{
+		{"simple", `return 5;
+return 10;
+return 123456;
+`,
+			3,
+		},
+	}
+	for _, c := range cases {
+		c := c
+		t.Run(c.name, func(t *testing.T) {
+			l := lexer.New(c.input)
+			p := parser.New(l)
+			program := p.ParseProgram()
+			if program == nil {
+				t.Fatal("ParseProgram() returned nil")
+			}
+			if len(p.Errors()) != 0 {
+				t.Fatalf("p.Errors: %v", p.Errors())
+			}
+			if len(program.Statements) != c.numStatements {
+				t.Fatalf("program.Statements has wrong length want=%d got=%d", c.numStatements, len(program.Statements))
+			}
+			for _, stmt := range program.Statements {
+				testReturnStatement(t, stmt)
+			}
+		})
+	}
+}
+
+func testReturnStatement(t *testing.T, s ast.Statement) {
+	t.Helper()
+	if s.TokenLiteral() != token.RETURN {
+		t.Errorf("wrong s.TokenLiteral want=%s got=%s", token.LET, s.TokenLiteral())
+	}
+	_, ok := s.(*ast.ReturnStatement)
+	if !ok {
+		t.Errorf("s is not *ast.ReturnStatement got=%T", s)
+	}
+}
