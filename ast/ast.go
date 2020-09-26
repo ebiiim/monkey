@@ -63,21 +63,6 @@ func (s *LetStatement) String() string {
 	return out.String()
 }
 
-type Identifier struct {
-	Token token.Token
-	Value string
-}
-
-func (i *Identifier) TokenLiteral() string {
-	return i.Token.Literal
-}
-
-func (i *Identifier) expressionNode() {}
-
-func (i *Identifier) String() string {
-	return i.Value
-}
-
 type ReturnStatement struct {
 	Token       token.Token // token.RETURN
 	ReturnValue Expression
@@ -98,3 +83,48 @@ func (s *ReturnStatement) String() string {
 	return out.String()
 }
 
+type ExpressionStatement struct {
+	Token      token.Token
+	Expression Expression
+}
+
+func (s *ExpressionStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+
+func (s *ExpressionStatement) statementNode() {}
+
+func (s *ExpressionStatement) String() string {
+	if s.Expression != nil {
+		return s.Expression.String()
+	}
+	return ""
+}
+
+type Identifier struct {
+	Token token.Token
+	Value string
+}
+
+func (i *Identifier) TokenLiteral() string {
+	return i.Token.Literal
+}
+
+func (i *Identifier) expressionNode() {}
+
+func (i *Identifier) String() string {
+	return i.Value
+}
+
+type IntegerLiteral struct {
+	Token token.Token
+	Value int64
+}
+
+func (l *IntegerLiteral) TokenLiteral() string { return l.Token.Literal }
+
+func (l *IntegerLiteral) expressionNode() {}
+
+func (l *IntegerLiteral) String() string {
+	return l.Token.Literal
+}
