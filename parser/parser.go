@@ -12,8 +12,9 @@ import (
 
 // Errors
 var (
-	ErrTokenType = errors.New("ErrTokenType")
-	ErrLiteral   = errors.New("ErrLiteral")
+	ErrTokenType      = errors.New("ErrTokenType")
+	ErrInvalidLiteral = errors.New("ErrInvalidLiteral")
+	ErrNoParseFunc    = errors.New("ErrNoParseFunc")
 )
 
 type (
@@ -32,6 +33,17 @@ const (
 	CALL       // fn(X)
 )
 
+var precedences = map[token.Type]int{
+	token.EQ:       EQUALS,
+	token.NEQ:      EQUALS,
+	token.LT:       LESSGRATER,
+	token.GT:       LESSGRATER,
+	token.PLUS:     SUM,
+	token.MINUS:    SUM,
+	token.SLASH:    PRODUCT,
+	token.ASTERISK: PRODUCT,
+}
+
 type Parser struct {
 	l              *lexer.Lexer
 	errs           []error
@@ -43,9 +55,22 @@ type Parser struct {
 
 func New(l *lexer.Lexer) *Parser {
 	p := &Parser{l: l}
+
 	p.prefixParseFns = make(map[token.Type]prefixParseFn)
 	p.registerPrefix(token.IDENT, p.parseIdentifier)
 	p.registerPrefix(token.INT, p.parseIntegerLiteral)
+	p.registerPrefix(token.BANG, p.parsePrefixExpression)
+	p.registerPrefix(token.MINUS, p.parsePrefixExpression)
+
+	p.infixParseFns = make(map[token.Type]infixParseFn)
+	p.registerInfix(token.PLUS, p.parseInfixExpression)
+	p.registerInfix(token.MINUS, p.parseInfixExpression)
+	p.registerInfix(token.SLASH, p.parseInfixExpression)
+	p.registerInfix(token.ASTERISK, p.parseInfixExpression)
+	p.registerInfix(token.EQ, p.parseInfixExpression)
+	p.registerInfix(token.NEQ, p.parseInfixExpression)
+	p.registerInfix(token.LT, p.parseInfixExpression)
+	p.registerInfix(token.GT, p.parseInfixExpression)
 
 	// set the first token
 	p.nextToken()
@@ -122,12 +147,24 @@ func (p *Parser) parseExpressionStatement() *ast.ExpressionStatement {
 }
 
 func (p *Parser) parseExpression(precedence int) ast.Expression {
-	prefix := p.prefixParseFns[p.curToken.Type]
-	if prefix == nil {
+	prefix, ok := p.prefixParseFns[p.curToken.Type]
+	if !ok {
+		msg := fmt.Errorf("%d:%d no prefix parse function for %s found %w", p.curToken.Row, p.curToken.Col, p.curToken.Type, ErrNoParseFunc)
+		p.errs = append(p.errs, msg)
 		return nil
 	}
-	leftExp := prefix()
-	return leftExp
+
+	leftExpr := prefix()
+	for !p.peekTokenIs(token.SEMICOLON) && precedence < p.peekPrecedence() {
+		infix := p.infixParseFns[p.peekToken.Type]
+		if infix == nil {
+			return leftExpr
+		}
+		p.nextToken()
+		leftExpr = infix(leftExpr)
+	}
+
+	return leftExpr
 }
 
 func (p *Parser) parseIdentifier() ast.Expression {
@@ -138,13 +175,36 @@ func (p *Parser) parseIntegerLiteral() ast.Expression {
 	lit := &ast.IntegerLiteral{Token: p.curToken}
 	value, err := strconv.ParseInt(p.curToken.Literal, 0, 64)
 	if err != nil {
-		err := fmt.Errorf("%d:%d could not parse \"%s\" as integer (%w)", p.curToken.Row, p.curToken.Col, p.curToken.Literal, ErrLiteral)
+		err := fmt.Errorf("%d:%d could not parse \"%s\" as integer (%w)", p.curToken.Row, p.curToken.Col, p.curToken.Literal, ErrInvalidLiteral)
 		p.errs = append(p.errs, err)
 		return nil
 	}
 	lit.Value = value
 	return lit
 }
+
+func (p *Parser) parsePrefixExpression() ast.Expression {
+	expr := &ast.PrefixExpression{
+		Token:    p.curToken,
+		Operator: p.curToken.Literal,
+	}
+	p.nextToken()
+	expr.Right = p.parseExpression(PREFIX)
+	return expr
+}
+
+func (p *Parser) parseInfixExpression(leftExpr ast.Expression) ast.Expression {
+	expr := &ast.InfixExpression{
+		Token:    p.curToken,
+		Operator: p.curToken.Literal,
+		Left:     leftExpr,
+	}
+	prec := p.curPrecedence()
+	p.nextToken()
+	expr.Right = p.parseExpression(prec)
+	return expr
+}
+
 func (p *Parser) curTokenIs(t token.Type) bool {
 	if p.curToken.Type == t {
 		return true
@@ -179,4 +239,18 @@ func (p *Parser) registerPrefix(tokenType token.Type, fn prefixParseFn) {
 
 func (p *Parser) registerInfix(tokenType token.Type, fn infixParseFn) {
 	p.infixParseFns[tokenType] = fn
+}
+
+func (p *Parser) peekPrecedence() int {
+	if p, ok := precedences[p.peekToken.Type]; ok {
+		return p
+	}
+	return LOWEST
+}
+
+func (p *Parser) curPrecedence() int {
+	if p, ok := precedences[p.curToken.Type]; ok {
+		return p
+	}
+	return LOWEST
 }

@@ -8,6 +8,7 @@ import (
 )
 
 type Node interface {
+	// TokenLiteral returns token.Literal
 	TokenLiteral() string
 	fmt.Stringer
 }
@@ -47,11 +48,11 @@ type LetStatement struct {
 	Value Expression
 }
 
+func (s *LetStatement) statementNode() {}
+
 func (s *LetStatement) TokenLiteral() string {
 	return s.Token.Literal
 }
-
-func (s *LetStatement) statementNode() {}
 
 func (s *LetStatement) String() string {
 	var out bytes.Buffer
@@ -68,11 +69,11 @@ type ReturnStatement struct {
 	ReturnValue Expression
 }
 
+func (s *ReturnStatement) statementNode() {}
+
 func (s *ReturnStatement) TokenLiteral() string {
 	return s.Token.Literal
 }
-
-func (s *ReturnStatement) statementNode() {}
 
 func (s *ReturnStatement) String() string {
 	var out bytes.Buffer
@@ -88,11 +89,11 @@ type ExpressionStatement struct {
 	Expression Expression
 }
 
+func (s *ExpressionStatement) statementNode() {}
+
 func (s *ExpressionStatement) TokenLiteral() string {
 	return s.Token.Literal
 }
-
-func (s *ExpressionStatement) statementNode() {}
 
 func (s *ExpressionStatement) String() string {
 	if s.Expression != nil {
@@ -106,14 +107,14 @@ type Identifier struct {
 	Value string
 }
 
-func (i *Identifier) TokenLiteral() string {
-	return i.Token.Literal
+func (e *Identifier) expressionNode() {}
+
+func (e *Identifier) TokenLiteral() string {
+	return e.Token.Literal
 }
 
-func (i *Identifier) expressionNode() {}
-
-func (i *Identifier) String() string {
-	return i.Value
+func (e *Identifier) String() string {
+	return e.Value
 }
 
 type IntegerLiteral struct {
@@ -121,10 +122,38 @@ type IntegerLiteral struct {
 	Value int64
 }
 
-func (l *IntegerLiteral) TokenLiteral() string { return l.Token.Literal }
+func (e *IntegerLiteral) expressionNode() {}
 
-func (l *IntegerLiteral) expressionNode() {}
+func (e *IntegerLiteral) TokenLiteral() string { return e.Token.Literal }
 
-func (l *IntegerLiteral) String() string {
-	return l.Token.Literal
+func (e *IntegerLiteral) String() string {
+	return e.Token.Literal
+}
+
+type PrefixExpression struct {
+	Token    token.Token // - or !
+	Operator string
+	Right    Expression
+}
+
+func (e *PrefixExpression) expressionNode() {}
+
+func (e *PrefixExpression) TokenLiteral() string { return e.Token.Literal }
+
+func (e *PrefixExpression) String() string {
+	return fmt.Sprintf("(%s%s)", e.Operator, e.Right.String())
+}
+
+type InfixExpression struct {
+	Token       token.Token
+	Operator    string
+	Left, Right Expression
+}
+
+func (e *InfixExpression) expressionNode() {}
+
+func (e *InfixExpression) TokenLiteral() string { return e.Token.Literal }
+
+func (e *InfixExpression) String() string {
+	return fmt.Sprintf("(%s %s %s)", e.Left.String(), e.Operator, e.Right.String())
 }

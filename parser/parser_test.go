@@ -239,3 +239,156 @@ func TestIntegerLiteralExpression(t *testing.T) {
 	}
 }
 
+func TestParsingPrefixExpression(t *testing.T) {
+	cases := []struct {
+		name          string
+		input         string
+		numStatements int
+		operator      string
+		integerValue  int64
+	}{
+		{"#1", "!5;", 1, "!", 5},
+		{"#2", "-15;", 1, "-", 15},
+	}
+	for _, c := range cases {
+		c := c
+		t.Run(c.name, func(t *testing.T) {
+			l := lexer.New(c.input)
+			p := parser.New(l)
+			program := p.ParseProgram()
+			if program == nil {
+				t.Fatal("ParseProgram() returned nil")
+			}
+			if len(p.Errors()) != 0 {
+				t.Fatalf("p.Errors: %v", p.Errors())
+			}
+			if len(program.Statements) != c.numStatements {
+				t.Fatalf("program.Statements has wrong length want=%d got=%d", c.numStatements, len(program.Statements))
+			}
+			for i, stmt := range program.Statements {
+				exprStmt, ok := stmt.(*ast.ExpressionStatement)
+				if !ok {
+					t.Fatalf("program.Statements[%d] is not *ast.ExpressionStatement but %T", i, program.Statements[0])
+				}
+				expr, ok := exprStmt.Expression.(*ast.PrefixExpression)
+				if !ok {
+					t.Fatalf("expr is not *ast.PrefixExpression but %T", exprStmt.Expression)
+				}
+				if expr.Operator != c.operator {
+					t.Fatalf("expr.Operator want=%v got=%v", expr.Operator, c.operator)
+				}
+				if !testIntegerLiteral(t, expr.Right, c.integerValue) {
+					return
+				}
+			}
+		})
+	}
+}
+
+func TestParsingInfixExpression(t *testing.T) {
+	cases := []struct {
+		name                  string
+		input                 string
+		numStatements         int
+		operator              string
+		leftValue, rightValue int64
+	}{
+		{"add", "5 + 5;", 1, "+", 5, 5},
+		{"sub", "5 - 5;", 1, "-", 5, 5},
+		{"mul", "5 * 5;", 1, "*", 5, 5},
+		{"div", "5 / 5;", 1, "/", 5, 5},
+		{"gt", "5 > 5;", 1, ">", 5, 5},
+		{"lt", "5 < 5;", 1, "<", 5, 5},
+		{"eq", "5 == 5;", 1, "==", 5, 5},
+		{"neq", "5 != 5;", 1, "!=", 5, 5},
+	}
+
+	for _, c := range cases {
+		c := c
+		t.Run(c.name, func(t *testing.T) {
+			l := lexer.New(c.input)
+			p := parser.New(l)
+			program := p.ParseProgram()
+			if program == nil {
+				t.Fatal("ParseProgram() returned nil")
+			}
+			if len(p.Errors()) != 0 {
+				t.Fatalf("p.Errors: %v", p.Errors())
+			}
+			if len(program.Statements) != c.numStatements {
+				t.Fatalf("program.Statements has wrong length want=%d got=%d", c.numStatements, len(program.Statements))
+			}
+			for i, stmt := range program.Statements {
+				exprStmt, ok := stmt.(*ast.ExpressionStatement)
+				if !ok {
+					t.Fatalf("program.Statements[%d] is not *ast.ExpressionStatement but %T", i, program.Statements[0])
+				}
+				expr, ok := exprStmt.Expression.(*ast.InfixExpression)
+				if !ok {
+					t.Fatalf("expr is not *ast.InfixExpression but %T", exprStmt.Expression)
+				}
+				if expr.Operator != c.operator {
+					t.Fatalf("expr.Operator want=%v got=%v", expr.Operator, c.operator)
+				}
+				if !testIntegerLiteral(t, expr.Left, c.leftValue) {
+					return
+				}
+				if !testIntegerLiteral(t, expr.Right, c.rightValue) {
+					return
+				}
+			}
+		})
+	}
+}
+
+func testIntegerLiteral(t *testing.T, expr ast.Expression, value int64) bool {
+	intLit, ok := expr.(*ast.IntegerLiteral)
+	if !ok {
+		t.Errorf("expr is not *ast.IntegerLiteral but %T", expr)
+		return false
+	}
+	if intLit.Value != value {
+		t.Errorf("intLit.Value want=%d got=%d", value, intLit.Value)
+		return false
+	}
+
+	if intLit.TokenLiteral() != fmt.Sprint(value) {
+		t.Errorf("intLit.TokenLiteral() want=%v got=%v", value, intLit.TokenLiteral())
+		return false
+	}
+	return true
+}
+
+func TestOperatorPrecedenceParsing(t *testing.T) {
+	cases := []struct {
+		input, want string
+	}{
+		{"-a * b", "((-a) * b)"},
+		{"!-a", "(!(-a))"},
+		{"a + b + c", "((a + b) + c)"},
+		{"a + b - c", "((a + b) - c)"},
+		{"a * b * c", "((a * b) * c)"},
+		{"a * b / c", "((a * b) / c)"},
+		{"a + b / c", "(a + (b / c))"},
+		{"a + b * c + d / e - f", "(((a + (b * c)) + (d / e)) - f)"},
+		{"3 + 4; -5 * 5", "(3 + 4)((-5) * 5)"},
+		{"5 > 4 == 3 < 4", "((5 > 4) == (3 < 4))"},
+		{"5 > 4 != 3 < 4", "((5 > 4) != (3 < 4))"},
+		{"3 + 4 * 5 == 3 * 1 + 4 * 5", "((3 + (4 * 5)) == ((3 * 1) + (4 * 5)))"},
+	}
+	for _, c := range cases {
+		c := c
+		t.Run(c.input, func(t *testing.T) {
+			l := lexer.New(c.input)
+			p := parser.New(l)
+			program := p.ParseProgram()
+			if len(p.Errors()) != 0 {
+				t.Fatalf("p.Errors: %v", p.Errors())
+			}
+			got := program.String()
+			if got != c.want {
+				t.Errorf("want=%s, got=%s", c.want, got)
+			}
+		})
+	}
+}
