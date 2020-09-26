@@ -79,7 +79,7 @@ func TestLetStatementErr(t *testing.T) {
 let = 10;
 let foobar = 123456;
 `,
-			3, 1,
+			5, 2,
 		},
 	}
 	for _, c := range cases {
