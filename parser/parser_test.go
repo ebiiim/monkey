@@ -12,6 +12,37 @@ import (
 
 func TestLetStatement(t *testing.T) {
 	cases := []struct {
+		input     string
+		wantIdent string
+		wantValue interface{}
+	}{
+		{"let x = 5;", "x", 5},
+		{"let y = true;", "y", true},
+		{"let foobar = y;", "foobar", "y"},
+	}
+	for _, c := range cases {
+		c := c
+		t.Run(c.input, func(t *testing.T) {
+			p := parser.New(lexer.New(c.input))
+			program := p.ParseProgram()
+			checkParserError(t, p, program)
+			if len(program.Statements) != 1 {
+				t.Fatalf("len(program.Statements) want=1 got=%d", len(program.Statements))
+			}
+			stmt := program.Statements[0]
+			if !testLetStatement(t, stmt, c.wantIdent) {
+				return
+			}
+			val := stmt.(*ast.LetStatement).Value
+			if !testLiteralExpression(t, val, c.wantValue) {
+				return
+			}
+		})
+	}
+}
+
+func TestLetStatements(t *testing.T) {
+	cases := []struct {
 		name            string
 		input           string
 		numStatements   int
@@ -34,10 +65,7 @@ let foobar = 123456;
 			l := lexer.New(c.input)
 			p := parser.New(l)
 			program := p.ParseProgram()
-			if program == nil {
-				t.Fatal("ParseProgram() returned nil")
-			}
-			expectNoError(t, p.Errors())
+			checkParserError(t, p, program)
 			if len(program.Statements) != c.numStatements {
 				t.Fatalf("program.Statements has wrong length want=%d got=%d", c.numStatements, len(program.Statements))
 			}
@@ -49,21 +77,26 @@ let foobar = 123456;
 	}
 }
 
-func testLetStatement(t *testing.T, s ast.Statement, wantIdent string) {
+func testLetStatement(t *testing.T, s ast.Statement, wantIdent string) bool {
 	t.Helper()
 	if s.TokenLiteral() != token.LET {
 		t.Errorf("wrong s.TokenLiteral() want=%s got=%s", token.LET, s.TokenLiteral())
+		return false
 	}
 	letStmt, ok := s.(*ast.LetStatement)
 	if !ok {
 		t.Errorf("s is not *ast.LetStatement got=%T", s)
+		return false
 	}
 	if letStmt.Name.Value != wantIdent {
 		t.Errorf("wrong letStmt.Name.Value want=%s got=%s", wantIdent, letStmt.Name.Value)
+		return false
 	}
 	if letStmt.Name.TokenLiteral() != wantIdent {
 		t.Errorf("wrong letStmt.Name.TokenLiteral() want=%s got=%s", wantIdent, letStmt.Name.TokenLiteral())
+		return false
 	}
+	return true
 }
 
 func TestLetStatementErr(t *testing.T) {
@@ -99,7 +132,7 @@ let foobar = 123456;
 	}
 }
 
-func TestReturnStatement(t *testing.T) {
+func TestReturnStatements(t *testing.T) {
 	cases := []struct {
 		name          string
 		input         string
@@ -118,10 +151,7 @@ return 123456;
 			l := lexer.New(c.input)
 			p := parser.New(l)
 			program := p.ParseProgram()
-			if program == nil {
-				t.Fatal("ParseProgram() returned nil")
-			}
-			expectNoError(t, p.Errors())
+			checkParserError(t, p, program)
 			if len(program.Statements) != c.numStatements {
 				t.Fatalf("program.Statements has wrong length want=%d got=%d", c.numStatements, len(program.Statements))
 			}
@@ -160,10 +190,7 @@ func TestIdentifierExpression(t *testing.T) {
 			l := lexer.New(c.input)
 			p := parser.New(l)
 			program := p.ParseProgram()
-			if program == nil {
-				t.Fatal("ParseProgram() returned nil")
-			}
-			expectNoError(t, p.Errors())
+			checkParserError(t, p, program)
 			if len(program.Statements) != c.numStatements {
 				t.Fatalf("program.Statements has wrong length want=%d got=%d", c.numStatements, len(program.Statements))
 			}
@@ -197,10 +224,7 @@ func TestIntegerLiteralExpression(t *testing.T) {
 			l := lexer.New(c.input)
 			p := parser.New(l)
 			program := p.ParseProgram()
-			if program == nil {
-				t.Fatal("ParseProgram() returned nil")
-			}
-			expectNoError(t, p.Errors())
+			checkParserError(t, p, program)
 			if len(program.Statements) != c.numStatements {
 				t.Fatalf("program.Statements has wrong length want=%d got=%d", c.numStatements, len(program.Statements))
 			}
@@ -234,10 +258,7 @@ func TestParsingPrefixExpression(t *testing.T) {
 			l := lexer.New(c.input)
 			p := parser.New(l)
 			program := p.ParseProgram()
-			if program == nil {
-				t.Fatal("ParseProgram() returned nil")
-			}
-			expectNoError(t, p.Errors())
+			checkParserError(t, p, program)
 			if len(program.Statements) != c.numStatements {
 				t.Fatalf("program.Statements has wrong length want=%d got=%d", c.numStatements, len(program.Statements))
 			}
@@ -288,12 +309,7 @@ func TestParsingInfixExpression(t *testing.T) {
 			l := lexer.New(c.input)
 			p := parser.New(l)
 			program := p.ParseProgram()
-			if program == nil {
-				t.Fatal("ParseProgram() returned nil")
-			}
-			if len(p.Errors()) != 0 {
-				t.Fatalf("p.Errors: %v", p.Errors())
-			}
+			checkParserError(t, p, program)
 			if len(program.Statements) != c.numStatements {
 				t.Fatalf("program.Statements has wrong length want=%d got=%d", c.numStatements, len(program.Statements))
 			}
@@ -351,9 +367,7 @@ func TestOperatorPrecedenceParsing(t *testing.T) {
 			l := lexer.New(c.input)
 			p := parser.New(l)
 			program := p.ParseProgram()
-			if len(p.Errors()) != 0 {
-				t.Fatalf("p.Errors: %v", p.Errors())
-			}
+			checkParserError(t, p, program)
 			got := program.String()
 			if got != c.want {
 				t.Errorf("want=%s, got=%s", c.want, got)
@@ -367,7 +381,7 @@ func TestIfExpression(t *testing.T) {
 	l := lexer.New(input)
 	p := parser.New(l)
 	program := p.ParseProgram()
-	expectNoError(t, p.Errors())
+	checkParserError(t, p, program)
 	if len(program.Statements) != 1 {
 		t.Fatalf("len(program.Statements) want=1 got=%d", len(program.Statements))
 	}
@@ -403,7 +417,7 @@ func TestIfElseExpression(t *testing.T) {
 	l := lexer.New(input)
 	p := parser.New(l)
 	program := p.ParseProgram()
-	expectNoError(t, p.Errors())
+	checkParserError(t, p, program)
 	if len(program.Statements) != 1 {
 		t.Fatalf("len(program.Statements) want=1 got=%d", len(program.Statements))
 	}
@@ -445,7 +459,7 @@ func TestFunctionLiteralParsing(t *testing.T) {
 	input := `fn(x, y) { x + y; }`
 	p := parser.New(lexer.New(input))
 	program := p.ParseProgram()
-	expectNoError(t, p.Errors())
+	checkParserError(t, p, program)
 	if len(program.Statements) != 1 {
 		t.Fatalf("len(program.Statements) want=1 got=%d", len(program.Statements))
 	}
@@ -491,7 +505,7 @@ func TestFunctionParameterParsing(t *testing.T) {
 			l := lexer.New(c.input)
 			p := parser.New(l)
 			program := p.ParseProgram()
-			expectNoError(t, p.Errors())
+			checkParserError(t, p, program)
 			if len(program.Statements) != 1 {
 				t.Fatalf("len(program.Statements) want=1 got=%d", len(program.Statements))
 			}
@@ -517,7 +531,7 @@ func TestCallExpressionParsing(t *testing.T) {
 	input := `add(1, 2 * 3, 4 + 5);`
 	p := parser.New(lexer.New(input))
 	program := p.ParseProgram()
-	expectNoError(t, p.Errors())
+	checkParserError(t, p, program)
 	if len(program.Statements) != 1 {
 		t.Fatalf("len(program.Statements) want=1 got=%d", len(program.Statements))
 	}
@@ -632,6 +646,13 @@ func testBooleanLiteral(t *testing.T, expr ast.Expression, value bool) bool {
 		return false
 	}
 	return true
+}
+
+func checkParserError(t *testing.T, p *parser.Parser, pg *ast.Program) {
+	if pg == nil {
+		t.Fatal("program is nil")
+	}
+	expectNoError(t, p.Errors())
 }
 
 func expectNoError(t *testing.T, errs []error) {
