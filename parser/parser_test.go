@@ -368,6 +368,95 @@ func TestOperatorPrecedenceParsing(t *testing.T) {
 	}
 }
 
+func TestIfExpression(t *testing.T) {
+	input := `if (x < y) { x }`
+	l := lexer.New(input)
+	p := parser.New(l)
+	program := p.ParseProgram()
+	if len(p.Errors()) != 0 {
+		for _, err := range p.Errors() {
+			t.Error(err)
+		}
+		t.Fatalf("got %d errors", len(p.Errors()))
+	}
+	if len(program.Statements) != 1 {
+		t.Fatalf("len(program.Statements) want=1 got=%d", len(program.Statements))
+	}
+
+	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+	if !ok {
+		t.Fatalf("program.Statements[0] is not *ast.ExpressionStatement but %T", program.Statements[0])
+	}
+	expr, ok := stmt.Expression.(*ast.IfExpression)
+	if !ok {
+		t.Fatalf("expr is not *ast.IfExpression but %T", expr)
+	}
+	if !testInfixExpression(t, expr.Condition, "<", "x", "y") {
+		return
+	}
+	if len(expr.Consequence.Statements) != 1 {
+		t.Fatalf("len(expr.Consequence.Statements) want=1 got=%d", len(expr.Consequence.Statements))
+	}
+	conseq, ok := expr.Consequence.Statements[0].(*ast.ExpressionStatement)
+	if !ok {
+		t.Fatalf("expr.Consequence.Statements[0] is not *ast.ExpressionStatement but %T", expr.Consequence.Statements[0])
+	}
+	if !testIdentifier(t, conseq.Expression, "x") {
+		return
+	}
+	if expr.Alternative != nil {
+		t.Fatalf("expr.Alternative want=nil, got=%+v", expr.Alternative)
+	}
+}
+
+func TestIfElseExpression(t *testing.T) {
+	input := `if (x < y) { x } else { y }`
+	l := lexer.New(input)
+	p := parser.New(l)
+	program := p.ParseProgram()
+	if len(p.Errors()) != 0 {
+		for _, err := range p.Errors() {
+			t.Error(err)
+		}
+		t.Fatalf("got %d errors", len(p.Errors()))
+	}
+	if len(program.Statements) != 1 {
+		t.Fatalf("len(program.Statements) want=1 got=%d", len(program.Statements))
+	}
+
+	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+	if !ok {
+		t.Fatalf("program.Statements[0] is not *ast.ExpressionStatement but %T", program.Statements[0])
+	}
+	expr, ok := stmt.Expression.(*ast.IfExpression)
+	if !ok {
+		t.Fatalf("expr is not *ast.IfExpression but %T", expr)
+	}
+	if !testInfixExpression(t, expr.Condition, "<", "x", "y") {
+		return
+	}
+	if len(expr.Consequence.Statements) != 1 {
+		t.Fatalf("len(expr.Consequence.Statements) want=1 got=%d", len(expr.Consequence.Statements))
+	}
+	conseq, ok := expr.Consequence.Statements[0].(*ast.ExpressionStatement)
+	if !ok {
+		t.Fatalf("expr.Consequence.Statements[0] is not *ast.ExpressionStatement but %T", expr.Consequence.Statements[0])
+	}
+	if !testIdentifier(t, conseq.Expression, "x") {
+		return
+	}
+	if len(expr.Alternative.Statements) != 1 {
+		t.Fatalf("len(expr.Alternative.Statements) want=1 got=%d", len(expr.Alternative.Statements))
+	}
+	alt, ok := expr.Alternative.Statements[0].(*ast.ExpressionStatement)
+	if !ok {
+		t.Fatalf("expr.Alternative.Statements[0] is not *ast.ExpressionStatement but %T", expr.Alternative.Statements[0])
+	}
+	if !testIdentifier(t, alt.Expression, "y") {
+		return
+	}
+}
+
 // testInfixExpression tests if expr has an operator and two literals.
 func testInfixExpression(t *testing.T, expr ast.Expression, op string, left, right interface{}) bool {
 	t.Helper()
