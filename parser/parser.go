@@ -158,7 +158,7 @@ func (p *Parser) parseExpressionStatement() *ast.ExpressionStatement {
 func (p *Parser) parseExpression(precedence int) ast.Expression {
 	prefix, ok := p.prefixParseFns[p.curToken.Type]
 	if !ok {
-		msg := fmt.Errorf("%d:%d no prefix parse function for %s found %w", p.curToken.Row, p.curToken.Col, p.curToken.Type, ErrNoParseFunc)
+		msg := fmt.Errorf("%d:%d no prefix parse function for %s found (%w)", p.curToken.Row, p.curToken.Col, p.curToken.Type, ErrNoParseFunc)
 		p.errs = append(p.errs, msg)
 		return nil
 	}
