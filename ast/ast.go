@@ -219,3 +219,26 @@ func (e *FunctionLiteral) String() string {
 	fmt.Fprintf(&out, ") %s", e.Body)
 	return out.String()
 }
+
+type CallExpression struct {
+	Token     token.Token // "("
+	Function  Expression  // Identifier or FunctionLiteral
+	Arguments []Expression
+}
+
+func (e *CallExpression) expressionNode() {}
+
+func (e *CallExpression) TokenLiteral() string { return e.Token.Literal }
+
+func (e *CallExpression) String() string {
+	var out bytes.Buffer
+	fmt.Fprintf(&out, "%s(", e.Function.String())
+	for i, arg := range e.Arguments {
+		fmt.Fprint(&out, arg)
+		if i+1 != len(e.Arguments) {
+			fmt.Fprintf(&out, ", ")
+		}
+	}
+	fmt.Fprint(&out, ")")
+	return out.String()
+}
