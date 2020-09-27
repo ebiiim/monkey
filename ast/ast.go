@@ -210,8 +210,11 @@ func (e *FunctionLiteral) TokenLiteral() string { return e.Token.Literal }
 func (e *FunctionLiteral) String() string {
 	var out bytes.Buffer
 	fmt.Fprint(&out, "fn (")
-	for _, p := range e.Parameters {
-		fmt.Fprintf(&out, "%s, ", p)
+	for i, p := range e.Parameters {
+		fmt.Fprint(&out, p)
+		if i+1 != len(e.Parameters) {
+			fmt.Fprintf(&out, ", ")
+		}
 	}
 	fmt.Fprintf(&out, ") %s", e.Body)
 	return out.String()
