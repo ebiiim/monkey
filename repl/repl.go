@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/ebiiim/monkey/evaluator"
 	"github.com/ebiiim/monkey/lexer"
 	"github.com/ebiiim/monkey/parser"
 )
@@ -26,7 +27,10 @@ func Start(in io.Reader, out io.Writer) {
 			printParserErrors(out, p.Errors())
 			continue
 		}
-		fmt.Fprintf(out, "%s\n", program.String())
+		ev := evaluator.Eval(program)
+		if ev != nil {
+			fmt.Fprintf(out, "%s\n", ev.Inspect())
+		}
 	}
 }
 
