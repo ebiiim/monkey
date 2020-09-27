@@ -16,6 +16,8 @@ func TestEvalIntegerExpression(t *testing.T) {
 	}{
 		{"5", 5},
 		{"10", 10},
+		{"-5", -5},
+		{"-10", -10},
 	}
 	for _, c := range cases {
 		c := c
@@ -36,6 +38,26 @@ func TestEvalBooleanExpression(t *testing.T) {
 	}
 	for _, c := range cases {
 		c := c
+		t.Run(c.input, func(t *testing.T) {
+			ev := testEval(c.input)
+			testBooleanObject(t, ev, c.want)
+		})
+	}
+}
+
+func TestBangOperator(t *testing.T) {
+	cases := []struct {
+		input string
+		want  bool
+	}{
+		{"!true", false},
+		{"!false", true},
+		{"!5", false},
+		{"!!true", true},
+		{"!!false", false},
+		{"!!5", true},
+	}
+	for _, c := range cases {
 		t.Run(c.input, func(t *testing.T) {
 			ev := testEval(c.input)
 			testBooleanObject(t, ev, c.want)

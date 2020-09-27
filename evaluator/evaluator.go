@@ -3,6 +3,7 @@ package evaluator
 import (
 	"github.com/ebiiim/monkey/ast"
 	"github.com/ebiiim/monkey/object"
+	"github.com/ebiiim/monkey/token"
 )
 
 // Global objects.
@@ -25,6 +26,9 @@ func Eval(node ast.Node) object.Object {
 		return &object.Integer{Value: node.Value}
 	case *ast.BooleanLiteral:
 		return nativeBoolToBooleanObject(node.Value)
+	case *ast.PrefixExpression:
+		right := Eval(node.Right)
+		return evalPrefixExpressions(node.Operator, right)
 	}
 	return nil
 }
@@ -35,6 +39,37 @@ func evalStatements(stmts []ast.Statement) object.Object {
 		obj = Eval(stmt)
 	}
 	return obj
+}
+
+func evalPrefixExpressions(op string, right object.Object) object.Object {
+	switch op {
+	case token.BANG:
+		return evalBangOperatorExpression(right)
+	case token.MINUS:
+		return evalMinusOperatorExpression(right)
+	default:
+		return NULL
+	}
+}
+
+func evalBangOperatorExpression(right object.Object) object.Object {
+	switch right {
+	case TRUE:
+		return FALSE
+	case FALSE:
+		return TRUE
+	case NULL:
+		return TRUE
+	default:
+		return FALSE
+	}
+}
+
+func evalMinusOperatorExpression(right object.Object) object.Object {
+	if right.Type() != object.INTEGER_OBJ {
+		return NULL
+	}
+	return &object.Integer{Value: -right.(*object.Integer).Value}
 }
 
 func nativeBoolToBooleanObject(v bool) object.Object {
