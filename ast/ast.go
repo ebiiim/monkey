@@ -196,3 +196,23 @@ func (s *BlockStatement) String() string {
 	}
 	return out.String()
 }
+
+type FunctionLiteral struct {
+	Token      token.Token
+	Parameters []*Identifier
+	Body       *BlockStatement
+}
+
+func (e *FunctionLiteral) expressionNode() {}
+
+func (e *FunctionLiteral) TokenLiteral() string { return e.Token.Literal }
+
+func (e *FunctionLiteral) String() string {
+	var out bytes.Buffer
+	fmt.Fprint(&out, "fn (")
+	for _, p := range e.Parameters {
+		fmt.Fprintf(&out, "%s, ", p)
+	}
+	fmt.Fprintf(&out, ") %s", e.Body)
+	return out.String()
+}

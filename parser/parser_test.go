@@ -457,6 +457,85 @@ func TestIfElseExpression(t *testing.T) {
 	}
 }
 
+func TestFunctionLiteralParsing(t *testing.T) {
+	input := `fn(x, y) { x + y; }`
+	p := parser.New(lexer.New(input))
+	program := p.ParseProgram()
+	if len(p.Errors()) != 0 {
+		for _, err := range p.Errors() {
+			t.Error(err)
+		}
+		t.Fatalf("got %d errors", len(p.Errors()))
+	}
+	if len(program.Statements) != 1 {
+		t.Fatalf("len(program.Statements) want=1 got=%d", len(program.Statements))
+	}
+	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+	if !ok {
+		t.Fatalf("program.Statements[0] is not *ast.ExpressionStatement but %T", program.Statements[0])
+	}
+	expr, ok := stmt.Expression.(*ast.FunctionLiteral)
+	if !ok {
+		t.Fatalf("expr is not *ast.FunctionLiteral but %T", expr)
+	}
+	if len(expr.Parameters) != 2 {
+		t.Fatalf("len(expr.Parameters) want=2 got=%d", len(expr.Parameters))
+	}
+	testOk := testLiteralExpression(t, expr.Parameters[0], "x")
+	testOk = testOk && testLiteralExpression(t, expr.Parameters[1], "y")
+	if len(expr.Body.Statements) != 1 {
+		t.Fatalf("len(expr.Body.Statements) want=1 got=%d", len(expr.Body.Statements))
+	}
+	bodyStmt, ok := expr.Body.Statements[0].(*ast.ExpressionStatement)
+	if !ok {
+		t.Fatalf("bodyStmt is not *ast.ExpressionStatement but %T", expr)
+	}
+	testOk = testOk && testInfixExpression(t, bodyStmt.Expression, "+", "x", "y")
+}
+
+func TestFunctionParameterParsing(t *testing.T) {
+	cases := []struct {
+		input      string
+		wantParams []string
+	}{
+		{"fn() {};", []string{}},
+		{"fn(x) {};", []string{"x"}},
+		{"fn(x, y) {};", []string{"x", "y"}},
+		{"fn(x, y, z) {};", []string{"x", "y", "z"}},
+	}
+	for _, c := range cases {
+		c := c
+		t.Run(c.input, func(t *testing.T) {
+			l := lexer.New(c.input)
+			p := parser.New(l)
+			program := p.ParseProgram()
+			if len(p.Errors()) != 0 {
+				for _, err := range p.Errors() {
+					t.Error(err)
+				}
+				t.Fatalf("got %d errors", len(p.Errors()))
+			}
+			if len(program.Statements) != 1 {
+				t.Fatalf("len(program.Statements) want=1 got=%d", len(program.Statements))
+			}
+			stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+			if !ok {
+				t.Fatalf("program.Statements[0] is not *ast.ExpressionStatement but %T", program.Statements[0])
+			}
+			expr, ok := stmt.Expression.(*ast.FunctionLiteral)
+			if !ok {
+				t.Fatalf("expr is not *ast.FunctionLiteral but %T", expr)
+			}
+			if len(expr.Parameters) != len(c.wantParams) {
+				t.Fatalf("len(expr.Parameters) want=%d got=%d", len(c.wantParams), len(expr.Parameters))
+			}
+			for i, p := range c.wantParams {
+				testLiteralExpression(t, expr.Parameters[i], p)
+			}
+		})
+	}
+}
+
 // testInfixExpression tests if expr has an operator and two literals.
 func testInfixExpression(t *testing.T, expr ast.Expression, op string, left, right interface{}) bool {
 	t.Helper()
