@@ -277,7 +277,7 @@ func TestParsingInfixExpression(t *testing.T) {
 		input                 string
 		numStatements         int
 		operator              string
-		leftValue, rightValue int64
+		leftValue, rightValue interface{}
 	}{
 		{"add", "5 + 5;", 1, "+", 5, 5},
 		{"sub", "5 - 5;", 1, "-", 5, 5},
@@ -287,6 +287,9 @@ func TestParsingInfixExpression(t *testing.T) {
 		{"lt", "5 < 5;", 1, "<", 5, 5},
 		{"eq", "5 == 5;", 1, "==", 5, 5},
 		{"neq", "5 != 5;", 1, "!=", 5, 5},
+		{"eq_bool#1", "true == true;", 1, "==", true, true},
+		{"eq_bool#2", "false == false;", 1, "==", false, false},
+		{"neq_bool", "true != false;", 1, "!=", true, false},
 	}
 
 	for _, c := range cases {
@@ -333,6 +336,10 @@ func TestOperatorPrecedenceParsing(t *testing.T) {
 		{"5 > 4 == 3 < 4", "((5 > 4) == (3 < 4))"},
 		{"5 > 4 != 3 < 4", "((5 > 4) != (3 < 4))"},
 		{"3 + 4 * 5 == 3 * 1 + 4 * 5", "((3 + (4 * 5)) == ((3 * 1) + (4 * 5)))"},
+		{"true", "true"},
+		{"false", "false"},
+		{"3 > 5 == false", "((3 > 5) == false)"},
+		{"3 < 5 == true", "((3 < 5) == true)"},
 	}
 	for _, c := range cases {
 		c := c
@@ -379,6 +386,8 @@ func testLiteralExpression(t *testing.T, expr ast.Expression, want interface{}) 
 		return testIntegerLiteral(t, expr, int64(v))
 	case int64:
 		return testIntegerLiteral(t, expr, v)
+	case bool:
+		return testBooleanLiteral(t, expr, v)
 	case string:
 		return testIdentifier(t, expr, v)
 	default:
@@ -416,9 +425,27 @@ func testIntegerLiteral(t *testing.T, expr ast.Expression, value int64) bool {
 		t.Errorf("intLit.Value want=%d got=%d", value, intLit.Value)
 		return false
 	}
-
 	if intLit.TokenLiteral() != fmt.Sprint(value) {
 		t.Errorf("intLit.TokenLiteral() want=%v got=%v", value, intLit.TokenLiteral())
+		return false
+	}
+	return true
+}
+
+func testBooleanLiteral(t *testing.T, expr ast.Expression, value bool) bool {
+	t.Helper()
+	boolLit, ok := expr.(*ast.BooleanLiteral)
+	if !ok {
+		t.Errorf("expr is not *ast.BooleanLiteral but %T", expr)
+		return false
+
+	}
+	if boolLit.Value != value {
+		t.Errorf("boolLit.Value want=%v got=%v", value, boolLit.Value)
+		return false
+	}
+	if boolLit.TokenLiteral() != fmt.Sprint(value) {
+		t.Errorf("boolLit.TokenLiteral() want=%v got=%v", value, boolLit.TokenLiteral())
 		return false
 	}
 	return true
