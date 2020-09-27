@@ -324,6 +324,7 @@ func TestOperatorPrecedenceParsing(t *testing.T) {
 	cases := []struct {
 		input, want string
 	}{
+		// ident
 		{"-a * b", "((-a) * b)"},
 		{"!-a", "(!(-a))"},
 		{"a + b + c", "((a + b) + c)"},
@@ -332,14 +333,23 @@ func TestOperatorPrecedenceParsing(t *testing.T) {
 		{"a * b / c", "((a * b) / c)"},
 		{"a + b / c", "(a + (b / c))"},
 		{"a + b * c + d / e - f", "(((a + (b * c)) + (d / e)) - f)"},
+		// int
 		{"3 + 4; -5 * 5", "(3 + 4)((-5) * 5)"},
 		{"5 > 4 == 3 < 4", "((5 > 4) == (3 < 4))"},
 		{"5 > 4 != 3 < 4", "((5 > 4) != (3 < 4))"},
 		{"3 + 4 * 5 == 3 * 1 + 4 * 5", "((3 + (4 * 5)) == ((3 * 1) + (4 * 5)))"},
+		// bool
 		{"true", "true"},
 		{"false", "false"},
 		{"3 > 5 == false", "((3 > 5) == false)"},
 		{"3 < 5 == true", "((3 < 5) == true)"},
+		// grouped
+		{"1 + (2 + 3) + 4", "((1 + (2 + 3)) + 4)"},
+		{"(5 + 5) * 2", "((5 + 5) * 2)"},
+		{"2 / (5 + 5)", "(2 / (5 + 5))"},
+		{"-(5 + 5)", "(-(5 + 5))"},
+		{"!(true == true)", "(!(true == true))"},
+		{"(((((O - O)))))", "(O - O)"},
 	}
 	for _, c := range cases {
 		c := c
