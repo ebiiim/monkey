@@ -1,6 +1,9 @@
 package evaluator
 
 import (
+	"errors"
+	"fmt"
+
 	"github.com/ebiiim/monkey/ast"
 	"github.com/ebiiim/monkey/object"
 	"github.com/ebiiim/monkey/token"
@@ -11,6 +14,12 @@ var (
 	NULL  = &object.Null{}
 	TRUE  = &object.Boolean{Value: true}
 	FALSE = &object.Boolean{Value: false}
+)
+
+// Error values.
+var (
+	ErrTypeMismatch    = errors.New("type mismatch")
+	ErrUnknownOperator = errors.New("unknown operator")
 )
 
 // Eval evaluates the program recursively.
@@ -25,6 +34,9 @@ func Eval(node ast.Node) object.Object {
 		return evalBlockStatements(node.Statements)
 	case *ast.ReturnStatement:
 		val := Eval(node.ReturnValue)
+		if isError(val) {
+			return val
+		}
 		return &object.ReturnValue{Value: val}
 	// expressions
 	case *ast.IntegerLiteral:
@@ -33,10 +45,19 @@ func Eval(node ast.Node) object.Object {
 		return nativeBoolToBooleanObject(node.Value)
 	case *ast.PrefixExpression:
 		right := Eval(node.Right)
+		if isError(right) {
+			return right
+		}
 		return evalPrefixExpressions(node.Operator, right)
 	case *ast.InfixExpression:
 		left := Eval(node.Left)
+		if isError(left) {
+			return left
+		}
 		right := Eval(node.Right)
+		if isError(right) {
+			return right
+		}
 		return evalInfixExpressions(node.Operator, left, right)
 	case *ast.IfExpression:
 		return evalIfExpression(node)
@@ -48,9 +69,12 @@ func evalProgram(stmts []ast.Statement) object.Object {
 	var obj object.Object
 	for _, stmt := range stmts {
 		obj = Eval(stmt)
-		// unwrap ReturnValue
-		if ret, ok := obj.(*object.ReturnValue); ok {
-			return ret.Value
+		// break if return or error
+		switch result := obj.(type) {
+		case *object.ReturnValue:
+			return result.Value
+		case *object.Error:
+			return result
 		}
 	}
 	return obj
@@ -60,7 +84,12 @@ func evalBlockStatements(stmts []ast.Statement) object.Object {
 	var obj object.Object
 	for _, stmt := range stmts {
 		obj = Eval(stmt)
-		if obj != nil && obj.Type() == object.RETURN_VALUE_OBJ {
+		if obj == nil {
+			continue
+		}
+		// break if return or error
+		objType := obj.Type()
+		if objType == object.RETURN_VALUE_OBJ || objType == object.ERROR_OBJ {
 			return obj
 		}
 	}
@@ -74,7 +103,7 @@ func evalPrefixExpressions(op string, right object.Object) object.Object {
 	case token.MINUS:
 		return evalMinusOperatorExpression(right)
 	default:
-		return NULL
+		return newError(ErrUnknownOperator, "%s%s", op, right.Type())
 	}
 }
 
@@ -93,7 +122,7 @@ func evalBangOperatorExpression(right object.Object) object.Object {
 
 func evalMinusOperatorExpression(right object.Object) object.Object {
 	if right.Type() != object.INTEGER_OBJ {
-		return NULL
+		return newError(ErrUnknownOperator, "-%s", right.Type())
 	}
 	return &object.Integer{Value: -right.(*object.Integer).Value}
 }
@@ -107,8 +136,10 @@ func evalInfixExpressions(op string, left, right object.Object) object.Object {
 		return nativeBoolToBooleanObject(left == right)
 	case op == token.NEQ:
 		return nativeBoolToBooleanObject(left != right)
+	case left.Type() != right.Type():
+		return newError(ErrTypeMismatch, "%s %s %s", left.Type(), op, right.Type())
 	default:
-		return NULL
+		return newError(ErrUnknownOperator, "%s %s %s", left.Type(), op, right.Type())
 	}
 }
 
@@ -133,12 +164,15 @@ func evalIntegerInfixExpression(op string, left, right object.Object) object.Obj
 	case token.NEQ:
 		return nativeBoolToBooleanObject(l != r)
 	default:
-		return NULL
+		return newError(ErrUnknownOperator, "%s %s %s", left.Type(), op, right.Type())
 	}
 }
 
 func evalIfExpression(e *ast.IfExpression) object.Object {
 	condition := Eval(e.Condition)
+	if isError(condition) {
+		return condition
+	}
 	if isTruthy(condition) {
 		return Eval(e.Consequence)
 	}
@@ -166,4 +200,16 @@ func nativeBoolToBooleanObject(v bool) object.Object {
 		return TRUE
 	}
 	return FALSE
+}
+
+func newError(errType error, format string, a ...interface{}) *object.Error {
+	msg := fmt.Sprintf(format, a...)
+	return &object.Error{Message: fmt.Errorf("%w: %s", errType, msg)}
+}
+
+func isError(obj object.Object) bool {
+	if obj != nil {
+		return obj.Type() == object.ERROR_OBJ
+	}
+	return false
 }

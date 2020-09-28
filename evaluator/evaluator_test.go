@@ -1,6 +1,7 @@
 package evaluator_test
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/ebiiim/monkey/evaluator"
@@ -128,11 +129,46 @@ func TestReturnStatements(t *testing.T) {
 		{"return 2 * 5; 9;", 10},
 		{"9; return 2 * 5; 9;", 10},
 		{"if (10 > 1) { return 10; } return 1;", 10},
+		{"if (10 > 1) { if (10 > 1) { return 1; 2; } return 3; }", 1},
 	}
 	for _, c := range cases {
 		t.Run(c.input, func(t *testing.T) {
 			ev := testEval(c.input)
 			testIntegerObject(t, ev, c.want)
+		})
+	}
+}
+
+func TestErrorHandling(t *testing.T) {
+	cases := []struct {
+		input   string
+		wantErr error
+		wantMsg string
+	}{
+		{"5 + true;", evaluator.ErrTypeMismatch, "type mismatch: INTEGER + BOOLEAN"},
+		{"5 + true; 5;", evaluator.ErrTypeMismatch, "type mismatch: INTEGER + BOOLEAN"},
+		{"-true", evaluator.ErrUnknownOperator, "unknown operator: -BOOLEAN"},
+		{"true + false;", evaluator.ErrUnknownOperator, "unknown operator: BOOLEAN + BOOLEAN"},
+		{"5; true + false; 5", evaluator.ErrUnknownOperator, "unknown operator: BOOLEAN + BOOLEAN"},
+		{"if (10 > 1) { true + false; }", evaluator.ErrUnknownOperator, "unknown operator: BOOLEAN + BOOLEAN"},
+		{"if (10 > 1) { if (10 > 1) { return true + false; 1; } return 1; }", evaluator.ErrUnknownOperator, "unknown operator: BOOLEAN + BOOLEAN"},
+	}
+	for _, c := range cases {
+		t.Run(c.input, func(t *testing.T) {
+			ev := testEval(c.input)
+			errObj, ok := ev.(*object.Error)
+			if !ok {
+				t.Errorf("no error object returned got=%T (%+v)", ev, ev)
+				return
+			}
+			if !errors.Is(errObj.Message, c.wantErr) {
+				t.Errorf("wrong error type want=%+v got=%+v", c.wantErr, errObj.Message)
+				return
+			}
+			if errObj.Message.Error() != c.wantMsg {
+				t.Errorf("wrong error message want=%s got=%s", c.wantMsg, errObj.Inspect())
+				return
+			}
 		})
 	}
 }
