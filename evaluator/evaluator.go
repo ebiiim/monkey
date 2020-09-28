@@ -85,6 +85,8 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 			return args[0]
 		}
 		return applyFunction(fn, args)
+	case *ast.StringLiteral:
+		return &object.String{Value: node.Value}
 	}
 	return nil
 }
@@ -163,6 +165,8 @@ func evalInfixExpressions(op string, left, right object.Object) object.Object {
 	switch {
 	case left.Type() == object.INTEGER_OBJ && right.Type() == object.INTEGER_OBJ:
 		return evalIntegerInfixExpression(op, left, right)
+	case left.Type() == object.STRING_OBJ && right.Type() == object.STRING_OBJ:
+		return evalStringInfixExpression(op, left, right)
 	// compare memory addresses because we have just one TRUE and FALSE
 	case op == token.EQ:
 		return nativeBoolToBooleanObject(left == right)
@@ -195,6 +199,21 @@ func evalIntegerInfixExpression(op string, left, right object.Object) object.Obj
 		return nativeBoolToBooleanObject(l == r)
 	case token.NEQ:
 		return nativeBoolToBooleanObject(l != r)
+	default:
+		return newError(ErrUnknownOperator, "%s %s %s", left.Type(), op, right.Type())
+	}
+}
+
+func evalStringInfixExpression(op string, left, right object.Object) object.Object {
+	l := left.(*object.String).Value
+	r := right.(*object.String).Value
+	switch op {
+	case token.PLUS:
+		return &object.String{Value: l + r}
+	case token.EQ:
+		return &object.Boolean{Value: l == r}
+	case token.NEQ:
+		return &object.Boolean{Value: l != r}
 	default:
 		return newError(ErrUnknownOperator, "%s %s %s", left.Type(), op, right.Type())
 	}

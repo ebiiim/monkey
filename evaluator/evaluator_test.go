@@ -153,6 +153,7 @@ func TestErrorHandling(t *testing.T) {
 		{"if (10 > 1) { true + false; }", evaluator.ErrUnknownOperator, "unknown operator: BOOLEAN + BOOLEAN"},
 		{"if (10 > 1) { if (10 > 1) { return true + false; 1; } return 1; }", evaluator.ErrUnknownOperator, "unknown operator: BOOLEAN + BOOLEAN"},
 		{"foobar;", evaluator.ErrIdentifierNotFound, "identifier not found: foobar"},
+		{`"hello " - "world";`, evaluator.ErrUnknownOperator, "unknown operator: STRING - STRING"},
 	}
 	for _, c := range cases {
 		t.Run(c.input, func(t *testing.T) {
@@ -230,6 +231,18 @@ func TestFunctionApplication(t *testing.T) {
 		t.Run(c.input, func(t *testing.T) {
 			testIntegerObject(t, testEval(c.input), c.want)
 		})
+	}
+}
+
+func TestStringLiteral(t *testing.T) {
+	input := `"hello world"`
+	ev := testEval(input)
+	str, ok := ev.(*object.String)
+	if !ok {
+		t.Fatalf("object is not String but %T (%+v)", str, str)
+	}
+	if str.Value != "hello world" {
+		t.Fatalf("str.Value want=\"hello world\" got=\"%s\"", str.Value)
 	}
 }
 

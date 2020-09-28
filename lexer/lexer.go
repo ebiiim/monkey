@@ -85,6 +85,9 @@ func (l *Lexer) NextToken() token.Token {
 		tok = token.NewC(token.LBRACE, l.ch, l.row, l.col)
 	case '}':
 		tok = token.NewC(token.RBRACE, l.ch, l.row, l.col)
+	case '"':
+		tok = token.New(token.STRING, "", l.row, l.col)
+		tok.Literal = l.readString()
 	case 0:
 		tok = token.New(token.EOF, "", l.row, l.col)
 	default:
@@ -123,6 +126,17 @@ func (l *Lexer) readIdentifier() string {
 	position := l.position
 	for isLetter(l.ch) {
 		l.readChar()
+	}
+	return l.input[position:l.position]
+}
+
+func (l *Lexer) readString() string {
+	position := l.readPosition
+	for {
+		l.readChar()
+		if l.ch == '"' || l.ch == 0 {
+			break
+		}
 	}
 	return l.input[position:l.position]
 }

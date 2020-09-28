@@ -136,6 +136,14 @@ let result = add(five, ten);`, []token.Token{
 			token.New(token.BANG, "!", 3, 1),
 			token.New(token.EOF, "", 3, 2),
 		}},
+		{"section4.2#1", `"foobar";
+"foo bar";`, []token.Token{
+			token.New(token.STRING, "foobar", 1, 1),
+			token.New(token.SEMICOLON, ";", 1, 9),
+			token.New(token.STRING, "foo bar", 2, 1),
+			token.New(token.SEMICOLON, ";", 2, 10),
+			token.New(token.EOF, "", 2, 11),
+		}},
 	}
 	for _, c := range cases {
 		c := c

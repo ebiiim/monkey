@@ -555,6 +555,27 @@ func TestCallExpressionParsing(t *testing.T) {
 	}
 }
 
+func TestStringLiteralExpression(t *testing.T) {
+	input := `"hello world";`
+	p := parser.New(lexer.New(input))
+	program := p.ParseProgram()
+	checkParserError(t, p, program)
+	if len(program.Statements) != 1 {
+		t.Fatalf("len(program.Statements) want=1 got=%d", len(program.Statements))
+	}
+	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+	if !ok {
+		t.Fatalf("program.Statements[0] is not *ast.ExpressionStatement but %T", program.Statements[0])
+	}
+	expr, ok := stmt.Expression.(*ast.StringLiteral)
+	if !ok {
+		t.Fatalf("expr is not *ast.StringLiteral but %T", expr)
+	}
+	if expr.Value != "hello world" {
+		t.Errorf("expr.Value want=\"helloworld\" got=%s", expr.Value)
+	}
+}
+
 // testInfixExpression tests if expr has an operator and two literals.
 func testInfixExpression(t *testing.T, expr ast.Expression, op string, left, right interface{}) bool {
 	t.Helper()
@@ -648,11 +669,11 @@ func testBooleanLiteral(t *testing.T, expr ast.Expression, value bool) bool {
 	return true
 }
 
-func checkParserError(t *testing.T, p *parser.Parser, pg *ast.Program) {
-	if pg == nil {
+func checkParserError(t *testing.T, parser *parser.Parser, program *ast.Program) {
+	if program == nil {
 		t.Fatal("program is nil")
 	}
-	expectNoError(t, p.Errors())
+	expectNoError(t, parser.Errors())
 }
 
 func expectNoError(t *testing.T, errs []error) {

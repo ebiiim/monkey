@@ -238,3 +238,14 @@ func (e *CallExpression) String() string {
 	fmt.Fprint(&out, ")")
 	return out.String()
 }
+
+type StringLiteral struct {
+	Token token.Token // `"`
+	Value string
+}
+
+var _ Expression = (*StringLiteral)(nil)
+
+func (e *StringLiteral) expressionNode()      {}
+func (e *StringLiteral) TokenLiteral() string { return e.Token.Literal }
+func (e *StringLiteral) String() string       { return e.Value }
