@@ -152,6 +152,7 @@ func TestErrorHandling(t *testing.T) {
 		{"5; true + false; 5", evaluator.ErrUnknownOperator, "unknown operator: BOOLEAN + BOOLEAN"},
 		{"if (10 > 1) { true + false; }", evaluator.ErrUnknownOperator, "unknown operator: BOOLEAN + BOOLEAN"},
 		{"if (10 > 1) { if (10 > 1) { return true + false; 1; } return 1; }", evaluator.ErrUnknownOperator, "unknown operator: BOOLEAN + BOOLEAN"},
+		{"foobar;", evaluator.ErrIdentifierNotFound, "identifier not found: foobar"},
 	}
 	for _, c := range cases {
 		t.Run(c.input, func(t *testing.T) {
@@ -173,10 +174,29 @@ func TestErrorHandling(t *testing.T) {
 	}
 }
 
+func TestLetStatement(t *testing.T) {
+	cases := []struct {
+		input string
+		want  int64
+	}{
+		{"let a = 5; a;", 5},
+		{"let a = 5 * 5; a;", 25},
+		{"let a = 5; let b = a; b;", 5},
+		{"let a = 5; let b = a; let c = a + b + 5; c;", 15},
+	}
+	for _, c := range cases {
+		c := c
+		t.Run(c.input, func(t *testing.T) {
+			testIntegerObject(t, testEval(c.input), c.want)
+		})
+	}
+}
+
 func testEval(input string) object.Object {
 	p := parser.New(lexer.New(input))
 	program := p.ParseProgram()
-	return evaluator.Eval(program)
+	env := object.NewEnvironment()
+	return evaluator.Eval(program, env)
 }
 
 func testNullObject(t *testing.T, obj object.Object) bool {

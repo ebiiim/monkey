@@ -7,6 +7,7 @@ import (
 
 	"github.com/ebiiim/monkey/evaluator"
 	"github.com/ebiiim/monkey/lexer"
+	"github.com/ebiiim/monkey/object"
 	"github.com/ebiiim/monkey/parser"
 )
 
@@ -16,6 +17,7 @@ const PROMPT = ">> "
 // Start starts a REPL.
 func Start(in io.Reader, out io.Writer) {
 	sc := bufio.NewScanner(in)
+	env := object.NewEnvironment()
 	for {
 		fmt.Fprint(out, PROMPT)
 		if ok := sc.Scan(); !ok {
@@ -27,7 +29,7 @@ func Start(in io.Reader, out io.Writer) {
 			printParserErrors(out, p.Errors())
 			continue
 		}
-		ev := evaluator.Eval(program)
+		ev := evaluator.Eval(program, env)
 		if ev != nil {
 			fmt.Fprintf(out, "%s\n", ev.Inspect())
 		}

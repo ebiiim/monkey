@@ -18,57 +18,66 @@ var (
 
 // Error values.
 var (
-	ErrTypeMismatch    = errors.New("type mismatch")
-	ErrUnknownOperator = errors.New("unknown operator")
+	ErrTypeMismatch       = errors.New("type mismatch")
+	ErrUnknownOperator    = errors.New("unknown operator")
+	ErrIdentifierNotFound = errors.New("identifier not found")
 )
 
 // Eval evaluates the program recursively.
-func Eval(node ast.Node) object.Object {
+func Eval(node ast.Node, env *object.Environment) object.Object {
 	switch node := node.(type) {
 	// statements
 	case *ast.Program:
-		return evalProgram(node.Statements)
+		return evalProgram(node.Statements, env)
 	case *ast.ExpressionStatement:
-		return Eval(node.Expression)
+		return Eval(node.Expression, env)
 	case *ast.BlockStatement:
-		return evalBlockStatements(node.Statements)
+		return evalBlockStatements(node.Statements, env)
 	case *ast.ReturnStatement:
-		val := Eval(node.ReturnValue)
+		val := Eval(node.ReturnValue, env)
 		if isError(val) {
 			return val
 		}
 		return &object.ReturnValue{Value: val}
+	case *ast.LetStatement:
+		val := Eval(node.Value, env)
+		if isError(val) {
+			return val
+		}
+		env.Set(node.Name.Value, val)
 	// expressions
+	case *ast.Identifier:
+		return evalIdentifier(node, env)
 	case *ast.IntegerLiteral:
 		return &object.Integer{Value: node.Value}
 	case *ast.BooleanLiteral:
 		return nativeBoolToBooleanObject(node.Value)
 	case *ast.PrefixExpression:
-		right := Eval(node.Right)
+		right := Eval(node.Right, env)
 		if isError(right) {
 			return right
 		}
 		return evalPrefixExpressions(node.Operator, right)
 	case *ast.InfixExpression:
-		left := Eval(node.Left)
+		left := Eval(node.Left, env)
 		if isError(left) {
 			return left
 		}
-		right := Eval(node.Right)
+		right := Eval(node.Right, env)
 		if isError(right) {
 			return right
 		}
 		return evalInfixExpressions(node.Operator, left, right)
 	case *ast.IfExpression:
-		return evalIfExpression(node)
+		return evalIfExpression(node, env)
 	}
 	return nil
 }
 
-func evalProgram(stmts []ast.Statement) object.Object {
+func evalProgram(stmts []ast.Statement, env *object.Environment) object.Object {
 	var obj object.Object
 	for _, stmt := range stmts {
-		obj = Eval(stmt)
+		obj = Eval(stmt, env)
 		// break if return or error
 		switch result := obj.(type) {
 		case *object.ReturnValue:
@@ -80,10 +89,10 @@ func evalProgram(stmts []ast.Statement) object.Object {
 	return obj
 }
 
-func evalBlockStatements(stmts []ast.Statement) object.Object {
+func evalBlockStatements(stmts []ast.Statement, env *object.Environment) object.Object {
 	var obj object.Object
 	for _, stmt := range stmts {
-		obj = Eval(stmt)
+		obj = Eval(stmt, env)
 		if obj == nil {
 			continue
 		}
@@ -92,6 +101,14 @@ func evalBlockStatements(stmts []ast.Statement) object.Object {
 		if objType == object.RETURN_VALUE_OBJ || objType == object.ERROR_OBJ {
 			return obj
 		}
+	}
+	return obj
+}
+
+func evalIdentifier(node *ast.Identifier, env *object.Environment) object.Object {
+	obj, ok := env.Get(node.Value)
+	if !ok {
+		return newError(ErrIdentifierNotFound, "%s", node.Value)
 	}
 	return obj
 }
@@ -168,16 +185,16 @@ func evalIntegerInfixExpression(op string, left, right object.Object) object.Obj
 	}
 }
 
-func evalIfExpression(e *ast.IfExpression) object.Object {
-	condition := Eval(e.Condition)
+func evalIfExpression(e *ast.IfExpression, env *object.Environment) object.Object {
+	condition := Eval(e.Condition, env)
 	if isError(condition) {
 		return condition
 	}
 	if isTruthy(condition) {
-		return Eval(e.Consequence)
+		return Eval(e.Consequence, env)
 	}
 	if e.Alternative != nil {
-		return Eval(e.Alternative)
+		return Eval(e.Alternative, env)
 	}
 	return NULL
 }
