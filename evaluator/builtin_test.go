@@ -9,6 +9,8 @@ import (
 )
 
 func TestBuiltinFunctions(t *testing.T) {
+	evaluator.BUILTIN_EXIT = evaluator.BUILTIN_EXIT_RETURN_NULL
+
 	cases := []struct {
 		input string
 		want  interface{}
@@ -19,6 +21,14 @@ func TestBuiltinFunctions(t *testing.T) {
 		{`len(1)`, evaluator.ErrTypeNotSupported},
 		{`len(1, 2)`, evaluator.ErrTooManyArgs},
 		{`len()`, evaluator.ErrTooFewArgs},
+		{`exit()`, evaluator.NULL},
+		{`exit(0)`, evaluator.NULL},
+		{`exit(1)`, evaluator.NULL},
+		{`exit(125)`, evaluator.NULL},
+		{`exit(-1)`, evaluator.ErrExitCode},
+		{`exit(-126)`, evaluator.ErrExitCode},
+		{`exit("1")`, evaluator.ErrTypeNotSupported},
+		{`exit(1, 2, 3)`, evaluator.ErrTooManyArgs},
 	}
 	for _, c := range cases {
 		t.Run(c.input, func(t *testing.T) {
@@ -26,6 +36,8 @@ func TestBuiltinFunctions(t *testing.T) {
 			switch want := c.want.(type) {
 			case int:
 				testIntegerObject(t, ev, int64(want))
+			case object.Null:
+				testNullObject(t, ev)
 			case error:
 				errObj, ok := ev.(*object.Error)
 				if !ok {
