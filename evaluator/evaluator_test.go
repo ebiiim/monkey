@@ -118,6 +118,25 @@ func TestBangOperator(t *testing.T) {
 	}
 }
 
+func TestReturnStatements(t *testing.T) {
+	cases := []struct {
+		input string
+		want  int64
+	}{
+		{"return 10;", 10},
+		{"return 10; 9;", 10},
+		{"return 2 * 5; 9;", 10},
+		{"9; return 2 * 5; 9;", 10},
+		{"if (10 > 1) { return 10; } return 1;", 10},
+	}
+	for _, c := range cases {
+		t.Run(c.input, func(t *testing.T) {
+			ev := testEval(c.input)
+			testIntegerObject(t, ev, c.want)
+		})
+	}
+}
+
 func testEval(input string) object.Object {
 	p := parser.New(lexer.New(input))
 	program := p.ParseProgram()
