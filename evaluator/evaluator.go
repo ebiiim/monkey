@@ -123,11 +123,13 @@ func evalBlockStatements(stmts []ast.Statement, env *object.Environment) object.
 }
 
 func evalIdentifier(node *ast.Identifier, env *object.Environment) object.Object {
-	obj, ok := env.Get(node.Value)
-	if !ok {
-		return newError(ErrIdentifierNotFound, "%s", node.Value)
+	if obj, ok := env.Get(node.Value); ok {
+		return obj
 	}
-	return obj
+	if builtin, ok := builtins[node.Value]; ok {
+		return builtin
+	}
+	return newError(ErrIdentifierNotFound, "%s", node.Value)
 }
 
 func evalPrefixExpressions(op string, right object.Object) object.Object {
@@ -246,13 +248,16 @@ func evalExpressions(e []ast.Expression, env *object.Environment) []object.Objec
 }
 
 func applyFunction(fn object.Object, args []object.Object) object.Object {
-	function, ok := fn.(*object.Function)
-	if !ok {
+	switch fu := fn.(type) {
+	case *object.Function:
+		eEnv := extendFunctionEnv(fu, args)
+		ev := Eval(fu.Body, eEnv)
+		return unwrapReturnValue(ev)
+	case *object.Builtin:
+		return fu.Fn(args...)
+	default:
 		return newError(ErrIsNotFunction, "%s", fn.Type())
 	}
-	eEnv := extendFunctionEnv(function, args)
-	ev := Eval(function.Body, eEnv)
-	return unwrapReturnValue(ev)
 }
 
 func extendFunctionEnv(fn *object.Function, args []object.Object) *object.Environment {
