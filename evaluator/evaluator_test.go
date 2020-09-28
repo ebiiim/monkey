@@ -192,6 +192,47 @@ func TestLetStatement(t *testing.T) {
 	}
 }
 
+func TestFunctionObject(t *testing.T) {
+	input := "fn(x) { x + 2; };"
+	ev := testEval(input)
+
+	fn, ok := ev.(*object.Function)
+	if !ok {
+		t.Fatalf("object is not Function but %T (%+v)", fn, fn)
+	}
+	if len(fn.Parameters) != 1 {
+		t.Fatalf("len(fn.Parameters) want=1 got=%d", len(fn.Parameters))
+	}
+	if fn.Parameters[0].String() != "x" {
+		t.Fatalf("fn.Parameters[0] want=x got=%s", fn.Parameters[0])
+	}
+	wantBody := "(x + 2)"
+	if fn.Body.String() != wantBody {
+		t.Fatalf("fn.Body want=%s got=%s", fn.Body.String(), wantBody)
+	}
+}
+
+func TestFunctionApplication(t *testing.T) {
+	cases := []struct {
+		input string
+		want  int64
+	}{
+		{"let identity = fn(x) { x; }; identity(5);", 5},
+		{"let identity = fn(x) { return x;}; identity(5);", 5},
+		{"let double = fn(x) { x * 2; }; double(5);", 10},
+		{"let add = fn(x, y) { x + y; }; add(5, 5);", 10},
+		{"let add = fn(x, y) { x + y; }; add(5 + 5, add(5, 5));", 20},
+		{"fn(x) { x; }(5)", 5},
+		{"let newAdder = fn(x) { fn(y) { x + y }; }; let addTwo = newAdder(2); addTwo(10); ", 12},
+	}
+	for _, c := range cases {
+		c := c
+		t.Run(c.input, func(t *testing.T) {
+			testIntegerObject(t, testEval(c.input), c.want)
+		})
+	}
+}
+
 func testEval(input string) object.Object {
 	p := parser.New(lexer.New(input))
 	program := p.ParseProgram()

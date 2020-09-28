@@ -1,7 +1,10 @@
 package object
 
 import (
+	"bytes"
 	"fmt"
+
+	"github.com/ebiiim/monkey/ast"
 )
 
 // Type represents type (in Monkey language) of the Object.
@@ -14,6 +17,7 @@ const (
 	BOOLEAN_OBJ      = "BOOLEAN"
 	RETURN_VALUE_OBJ = "RETURN_VALUE"
 	ERROR_OBJ        = "ERROR"
+	FUNCTION_OBJ     = "FUNCTION"
 )
 
 type Object interface {
@@ -61,8 +65,26 @@ var _ Object = (*Error)(nil)
 func (o *Error) Type() Type      { return ERROR_OBJ }
 func (o *Error) Inspect() string { return fmt.Sprintf("ERROR: %s", o.Message) }
 
-type Environment struct{ store map[string]Object }
+type Function struct {
+	Env        *Environment
+	Parameters []*ast.Identifier
+	Body       *ast.BlockStatement
+}
 
-func NewEnvironment() *Environment                        { return &Environment{store: make(map[string]Object)} }
-func (e *Environment) Get(name string) (Object, bool)     { obj, ok := e.store[name]; return obj, ok }
-func (e *Environment) Set(name string, val Object) Object { e.store[name] = val; return val }
+var _ Object = (*Function)(nil)
+
+func (o *Function) Type() Type { return FUNCTION_OBJ }
+func (o *Function) Inspect() string {
+	var out bytes.Buffer
+	fmt.Fprint(&out, "fn(")
+	for i, param := range o.Parameters {
+		fmt.Fprint(&out, param)
+		if i+1 != len(o.Parameters) {
+			fmt.Fprintf(&out, ", ")
+		}
+	}
+	fmt.Fprint(&out, ") {\n")
+	fmt.Fprint(&out, o.Body.String())
+	fmt.Fprint(&out, "\n}")
+	return out.String()
+}
