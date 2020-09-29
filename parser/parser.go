@@ -31,6 +31,7 @@ const (
 	PRODUCT    // *
 	PREFIX     // -X or !X
 	CALL       // fn(X)
+	INDEX      // array[index]
 )
 
 var precedences = map[token.Type]int{
@@ -43,6 +44,7 @@ var precedences = map[token.Type]int{
 	token.SLASH:    PRODUCT,
 	token.ASTERISK: PRODUCT,
 	token.LPAREN:   CALL,
+	token.LBRACKET: INDEX,
 }
 
 type Parser struct {
@@ -69,6 +71,7 @@ func New(l *lexer.Lexer) *Parser {
 	p.registerPrefix(token.IF, p.parseIfExpression)
 	p.registerPrefix(token.FUNCTION, p.parseFunctionLiteral)
 	p.registerPrefix(token.STRING, p.parseStringLiteral)
+	p.registerPrefix(token.LBRACKET, p.parseArrayLiteral)
 
 	p.infixParseFns = make(map[token.Type]infixParseFn)
 	p.registerInfix(token.PLUS, p.parseInfixExpression)
@@ -80,6 +83,7 @@ func New(l *lexer.Lexer) *Parser {
 	p.registerInfix(token.LT, p.parseInfixExpression)
 	p.registerInfix(token.GT, p.parseInfixExpression)
 	p.registerInfix(token.LPAREN, p.parseCallExpression)
+	p.registerInfix(token.LBRACKET, p.parseIndexExpression)
 
 	// set the first token
 	p.nextToken()
@@ -299,13 +303,36 @@ func (p *Parser) parseCallExpression(leftExpr ast.Expression) ast.Expression {
 		Token:    p.curToken,
 		Function: leftExpr,
 	}
-	expr.Arguments = p.parseCallArguments()
+	expr.Arguments = p.parseExpressionList(token.RPAREN)
 	return expr
 }
 
-func (p *Parser) parseCallArguments() []ast.Expression {
+func (p *Parser) parseIndexExpression(leftExpr ast.Expression) ast.Expression {
+	expr := &ast.IndexExpression{
+		Token: p.curToken,
+		Left:  leftExpr,
+	}
+	p.nextToken()
+	expr.Index = p.parseExpression(LOWEST)
+	if !p.expectPeek(token.RBRACKET) {
+		return nil
+	}
+	return expr
+}
+
+func (p *Parser) parseStringLiteral() ast.Expression {
+	return &ast.StringLiteral{Token: p.curToken, Value: p.curToken.Literal}
+}
+
+func (p *Parser) parseArrayLiteral() ast.Expression {
+	arr := &ast.ArrayLiteral{Token: p.curToken}
+	arr.Elements = p.parseExpressionList(token.RBRACKET)
+	return arr
+}
+
+func (p *Parser) parseExpressionList(end token.Type) []ast.Expression {
 	var args []ast.Expression
-	for !p.peekTokenIs(token.RPAREN) {
+	for !p.peekTokenIs(end) {
 		p.nextToken()
 		expr := p.parseExpression(LOWEST)
 		if expr == nil {
@@ -316,12 +343,8 @@ func (p *Parser) parseCallArguments() []ast.Expression {
 			p.nextToken()
 		}
 	}
-	p.nextToken() // skip RPAREN
+	p.nextToken() // skip end token
 	return args
-}
-
-func (p *Parser) parseStringLiteral() ast.Expression {
-	return &ast.StringLiteral{Token: p.curToken, Value: p.curToken.Literal}
 }
 
 func (p *Parser) curTokenIs(t token.Type) bool {

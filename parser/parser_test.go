@@ -360,6 +360,9 @@ func TestOperatorPrecedenceParsing(t *testing.T) {
 		{"a + add(b * c) + d", "((a + add((b * c))) + d)"},
 		{"add(a, b, 1, 2 * 3, 4 + 5, add(6, 7 * 8))", "add(a, b, 1, (2 * 3), (4 + 5), add(6, (7 * 8)))"},
 		{"add(a + b + c * d / f + g)", "add((((a + b) + ((c * d) / f)) + g))"},
+		// index
+		{"a * [1, 2, 3, 4][b * c] * d", "((a * ([1, 2, 3, 4][(b * c)])) * d)"},
+		{"add(a * b[2], b[1], 2 * [1, 2][1])", "add((a * (b[2])), (b[1]), (2 * ([1, 2][1])))"},
 	}
 	for _, c := range cases {
 		c := c
@@ -574,6 +577,50 @@ func TestStringLiteralExpression(t *testing.T) {
 	if expr.Value != "hello world" {
 		t.Errorf("expr.Value want=\"helloworld\" got=%s", expr.Value)
 	}
+}
+
+func TestParsingArrayLiteral(t *testing.T) {
+	input := `[1, 2 * 2, 3 + 3];`
+	p := parser.New(lexer.New(input))
+	program := p.ParseProgram()
+	checkParserError(t, p, program)
+	if len(program.Statements) != 1 {
+		t.Fatalf("len(program.Statements) want=1 got=%d", len(program.Statements))
+	}
+	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+	if !ok {
+		t.Fatalf("program.Statements[0] is not *ast.ExpressionStatement but %T", program.Statements[0])
+	}
+	expr, ok := stmt.Expression.(*ast.ArrayLiteral)
+	if !ok {
+		t.Fatalf("expr is not *ast.ArrayLiteral but %T", expr)
+	}
+	if len(expr.Elements) != 3 {
+		t.Fatalf("len(expr.Elements) want=3 got=%d", len(expr.Elements))
+	}
+	testIntegerLiteral(t, expr.Elements[0], 1)
+	testInfixExpression(t, expr.Elements[1], "*", 2, 2)
+	testInfixExpression(t, expr.Elements[2], "+", 3, 3)
+}
+
+func TestParsingIndexExpressions(t *testing.T) {
+	input := "myArray[1 + 1];"
+	p := parser.New(lexer.New(input))
+	program := p.ParseProgram()
+	checkParserError(t, p, program)
+	if len(program.Statements) != 1 {
+		t.Fatalf("len(program.Statements) want=1 got=%d", len(program.Statements))
+	}
+	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+	if !ok {
+		t.Fatalf("program.Statements[0] is not *ast.ExpressionStatement but %T", program.Statements[0])
+	}
+	expr, ok := stmt.Expression.(*ast.IndexExpression)
+	if !ok {
+		t.Fatalf("expr is not *ast.IndexExpression but %T", expr)
+	}
+	testIdentifier(t, expr.Left, "myArray")
+	testInfixExpression(t, expr.Index, "+", 1, 1)
 }
 
 // testInfixExpression tests if expr has an operator and two literals.

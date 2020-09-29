@@ -246,6 +246,49 @@ func TestStringLiteral(t *testing.T) {
 	}
 }
 
+func TestArrayLiterals(t *testing.T) {
+	input := "[1, 2 * 2, 3 + 3]"
+	ev := testEval(input)
+	arr, ok := ev.(*object.Array)
+	if !ok {
+		t.Fatalf("object is not Array but %T (%+v)", arr, arr)
+	}
+	if len(arr.Elements) != 3 {
+		t.Fatalf("len(arr.Elements) want=3 got=%d", len(arr.Elements))
+	}
+	testIntegerObject(t, arr.Elements[0], 1)
+	testIntegerObject(t, arr.Elements[1], 4)
+	testIntegerObject(t, arr.Elements[2], 6)
+}
+
+func TestArrayIndexExpressions(t *testing.T) {
+	cases := []struct {
+		input string
+		want  interface{}
+	}{
+		{"[1, 2, 3][0]", 1},
+		{"[1, 2, 3][1]", 2},
+		{"let i = 0; [1][i];", 1},
+		{"[1, 2, 3][1 + 1];", 3},
+		{"let myArray = [1, 2, 3]; myArray[2]", 3},
+		{"let arr = [1, 2, 3]; arr[1] + arr[2];", 5},
+		{"let arr = [1, 2, 3]; let i = arr[0]; arr[i]", 2},
+		{"[1, 2, 3][3]", nil},
+		{"[1, 2, 3][-1]", nil},
+	}
+	for _, c := range cases {
+		t.Run(c.input, func(t *testing.T) {
+			ev := testEval(c.input)
+			switch want := c.want.(type) {
+			case int:
+				testIntegerObject(t, ev, int64(want))
+			case nil:
+				testNullObject(t, ev)
+			}
+		})
+	}
+}
+
 func testEval(input string) object.Object {
 	p := parser.New(lexer.New(input))
 	program := p.ParseProgram()
@@ -286,4 +329,17 @@ func testBooleanObject(t *testing.T, obj object.Object, want bool) bool {
 	}
 	return true
 
+}
+
+func testArrayObject(t *testing.T, obj object.Object, want *object.Array) bool {
+	o, ok := obj.(*object.Array)
+	if !ok {
+		t.Errorf("object is not Array but %T (%+v)", obj, obj)
+		return false
+	}
+	if o.Inspect() != want.Inspect() {
+		t.Errorf("wrong Array want=%s got=%s", want.Inspect(), o.Inspect())
+		return false
+	}
+	return true
 }

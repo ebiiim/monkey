@@ -58,7 +58,7 @@ func (s *LetStatement) String() string {
 	if s.Value != nil {
 		fmt.Fprintf(&out, "%s", s.Value.String())
 	}
-	fmt.Fprintf(&out, ";")
+	fmt.Fprint(&out, ";")
 	return out.String()
 }
 
@@ -209,7 +209,7 @@ func (e *FunctionLiteral) String() string {
 	for i, p := range e.Parameters {
 		fmt.Fprint(&out, p)
 		if i+1 != len(e.Parameters) {
-			fmt.Fprintf(&out, ", ")
+			fmt.Fprint(&out, ", ")
 		}
 	}
 	fmt.Fprintf(&out, ") %s", e.Body)
@@ -232,7 +232,7 @@ func (e *CallExpression) String() string {
 	for i, arg := range e.Arguments {
 		fmt.Fprint(&out, arg)
 		if i+1 != len(e.Arguments) {
-			fmt.Fprintf(&out, ", ")
+			fmt.Fprint(&out, ", ")
 		}
 	}
 	fmt.Fprint(&out, ")")
@@ -249,3 +249,39 @@ var _ Expression = (*StringLiteral)(nil)
 func (e *StringLiteral) expressionNode()      {}
 func (e *StringLiteral) TokenLiteral() string { return e.Token.Literal }
 func (e *StringLiteral) String() string       { return e.Value }
+
+type ArrayLiteral struct {
+	Token    token.Token // "["
+	Elements []Expression
+}
+
+var _ Expression = (*ArrayLiteral)(nil)
+
+func (e *ArrayLiteral) expressionNode()      {}
+func (e *ArrayLiteral) TokenLiteral() string { return e.Token.Literal }
+func (e *ArrayLiteral) String() string {
+	var out bytes.Buffer
+	fmt.Fprint(&out, "[")
+	for i, elem := range e.Elements {
+		fmt.Fprint(&out, elem)
+		if i+1 != len(e.Elements) {
+			fmt.Fprint(&out, ", ")
+		}
+	}
+	fmt.Fprint(&out, "]")
+	return out.String()
+}
+
+type IndexExpression struct {
+	Token token.Token
+	Left  Expression
+	Index Expression
+}
+
+var _ Expression = (*IndexExpression)(nil)
+
+func (e *IndexExpression) expressionNode()      {}
+func (e *IndexExpression) TokenLiteral() string { return e.Token.Literal }
+func (e *IndexExpression) String() string {
+	return fmt.Sprintf("(%s[%s])", e.Left.String(), e.Index.String())
+}

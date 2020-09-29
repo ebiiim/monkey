@@ -2,68 +2,125 @@ package evaluator
 
 import (
 	"errors"
-	"os"
 
 	"github.com/ebiiim/monkey/object"
 )
 
 var builtins = map[string]*object.Builtin{
-	"len":  {Fn: fnLen},
-	"exit": {Fn: fnExit},
+	"len":   {Fn: fnLen},
+	"first": {Fn: fnFirst},
+	"last":  {Fn: fnLast},
+	"rest":  {Fn: fnRest},
+	"push":  {Fn: fnPush},
+	"pop":   {Fn: fnPop},
 }
 
+// Builtin function errors.
 var (
 	ErrTooManyArgs      = errors.New("too many arguments")
 	ErrTooFewArgs       = errors.New("too few arguments")
 	ErrTypeNotSupported = errors.New("type not supported")
-	ErrExitCode         = errors.New("exit code must be 0--125")
+	ErrArrayNeeded      = errors.New("argument must be Array")
+	ErrFileOpenFailed   = errors.New("failed to open file")
 )
 
 var fnLen = func(args ...object.Object) object.Object {
-	if len(args) == 0 {
-		return newError(ErrTooFewArgs, "want=%s got=%d", "1", len(args))
-	}
-	if len(args) > 1 {
-		return newError(ErrTooManyArgs, "want=%s got=%d", "1", len(args))
+	if errObj := hasNArgs(1, args...); errObj != nil {
+		return errObj
 	}
 	switch arg := args[0].(type) {
 	case *object.String:
 		return &object.Integer{Value: int64(len(arg.Value))}
+	case *object.Array:
+		return &object.Integer{Value: int64(len(arg.Elements))}
 	default:
 		return newError(ErrTypeNotSupported, "len(%T)", arg.Type())
 	}
 }
 
-// TODO: maybe this should return some signal instead of NULL (and do os.Exit()).
-var fnExit = func(args ...object.Object) object.Object {
-	if len(args) > 1 {
-		return newError(ErrTooManyArgs, "want=%s got=%d", "0|1", len(args))
+var fnFirst = func(args ...object.Object) object.Object {
+	if errObj := hasNArgs(1, args...); errObj != nil {
+		return errObj
 	}
-	if len(args) == 0 {
-		builtinExit(0)
+	if args[0].Type() != object.ARRAY_OBJ {
+		return newError(ErrArrayNeeded, "first(%T)", args[0].Type())
+	}
+	arr := args[0].(*object.Array)
+	if len(arr.Elements) == 0 {
 		return NULL
 	}
-	switch arg := args[0].(type) {
-	case *object.Integer:
-		if arg.Value < 0 || arg.Value > 125 {
-			return newError(ErrExitCode, "exit(%d)", arg.Value)
-		}
-		builtinExit(int(arg.Value))
-		return NULL
-	default:
-		return newError(ErrTypeNotSupported, "exit(%T)", arg.Type())
-	}
+	return arr.Elements[0]
 }
 
-const (
-	BUILTIN_EXIT_RETURN_NULL = iota + 1
-	BUILTIN_EXIT_OS_EXIT
-)
+var fnLast = func(args ...object.Object) object.Object {
+	if errObj := hasNArgs(1, args...); errObj != nil {
+		return errObj
+	}
+	if args[0].Type() != object.ARRAY_OBJ {
+		return newError(ErrArrayNeeded, "last(%T)", args[0].Type())
+	}
+	arr := args[0].(*object.Array)
+	if len(arr.Elements) == 0 {
+		return NULL
+	}
+	return arr.Elements[len(arr.Elements)-1]
+}
 
-var BUILTIN_EXIT = BUILTIN_EXIT_OS_EXIT
+var fnRest = func(args ...object.Object) object.Object {
+	if errObj := hasNArgs(1, args...); errObj != nil {
+		return errObj
+	}
+	if args[0].Type() != object.ARRAY_OBJ {
+		return newError(ErrArrayNeeded, "rest(%T)", args[0].Type())
+	}
+	arr := args[0].(*object.Array)
+	size := len(arr.Elements)
+	if size == 0 {
+		return NULL
+	}
+	newArr := make([]object.Object, size-1, size-1)
+	copy(newArr, arr.Elements[1:size])
+	return &object.Array{Elements: newArr}
+}
 
-func builtinExit(code int) {
-	if BUILTIN_EXIT == BUILTIN_EXIT_OS_EXIT {
-		os.Exit(code)
+var fnPush = func(args ...object.Object) object.Object {
+	if errObj := hasNArgs(2, args...); errObj != nil {
+		return errObj
+	}
+	if args[0].Type() != object.ARRAY_OBJ {
+		return newError(ErrArrayNeeded, "rest(%T)", args[0].Type())
+	}
+	arr := args[0].(*object.Array)
+	size := len(arr.Elements)
+	newArr := make([]object.Object, size+1, size+1)
+	copy(newArr, arr.Elements)
+	newArr[size] = args[1]
+	return &object.Array{Elements: newArr}
+}
+
+var fnPop = func(args ...object.Object) object.Object {
+	if errObj := hasNArgs(1, args...); errObj != nil {
+		return errObj
+	}
+	if args[0].Type() != object.ARRAY_OBJ {
+		return newError(ErrArrayNeeded, "rest(%T)", args[0].Type())
+	}
+	arr := args[0].(*object.Array)
+	size := len(arr.Elements)
+	if size == 0 {
+		return NULL
+	}
+	newArr := make([]object.Object, size-1, size-1)
+	copy(newArr, arr.Elements[0:size-1])
+	return &object.Array{Elements: newArr}
+}
+
+func hasNArgs(n int, args ...object.Object) object.Object {
+	if len(args) == n {
+		return nil
+	} else if len(args) < n {
+		return newError(ErrTooFewArgs, "want=%d got=%d", n, len(args))
+	} else {
+		return newError(ErrTooManyArgs, "want=%d got=%d", n, len(args))
 	}
 }

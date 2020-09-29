@@ -144,6 +144,15 @@ let result = add(five, ten);`, []token.Token{
 			token.New(token.SEMICOLON, ";", 2, 10),
 			token.New(token.EOF, "", 2, 11),
 		}},
+		{"section4.4#1", `[1, 2];`, []token.Token{
+			token.New(token.LBRACKET, "[", 1, 1),
+			token.New(token.INT, "1", 1, 2),
+			token.New(token.COMMA, ",", 1, 3),
+			token.New(token.INT, "2", 1, 5),
+			token.New(token.RBRACKET, "]", 1, 6),
+			token.New(token.SEMICOLON, ";", 1, 7),
+			token.New(token.EOF, "", 1, 8),
+		}},
 	}
 	for _, c := range cases {
 		c := c

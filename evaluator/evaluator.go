@@ -18,10 +18,11 @@ var (
 
 // Error values.
 var (
-	ErrTypeMismatch       = errors.New("type mismatch")
-	ErrUnknownOperator    = errors.New("unknown operator")
-	ErrIdentifierNotFound = errors.New("identifier not found")
-	ErrIsNotFunction      = errors.New("not a function")
+	ErrTypeMismatch              = errors.New("type mismatch")
+	ErrUnknownOperator           = errors.New("unknown operator")
+	ErrIdentifierNotFound        = errors.New("identifier not found")
+	ErrIsNotFunction             = errors.New("not a function")
+	ErrIndexOperatorNotSupported = errors.New("index operator not supported")
 )
 
 // Eval evaluates the program recursively.
@@ -87,6 +88,22 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 		return applyFunction(fn, args)
 	case *ast.StringLiteral:
 		return &object.String{Value: node.Value}
+	case *ast.ArrayLiteral:
+		elems := evalExpressions(node.Elements, env)
+		if len(elems) == 1 && isError(elems[0]) {
+			return elems[0]
+		}
+		return &object.Array{Elements: elems}
+	case *ast.IndexExpression:
+		l := Eval(node.Left, env)
+		if isError(l) {
+			return l
+		}
+		idx := Eval(node.Index, env)
+		if isError(idx) {
+			return idx
+		}
+		return evalIndexExpression(l, idx)
 	}
 	return nil
 }
@@ -273,6 +290,25 @@ func unwrapReturnValue(obj object.Object) object.Object {
 		return returnValue
 	}
 	return obj
+}
+
+func evalIndexExpression(left, index object.Object) object.Object {
+	switch {
+	case left.Type() == object.ARRAY_OBJ && index.Type() == object.INTEGER_OBJ:
+		return evalArrayIndexExpression(left, index)
+	default:
+		return newError(ErrIndexOperatorNotSupported, "%s", left.Type())
+	}
+}
+
+func evalArrayIndexExpression(array, index object.Object) object.Object {
+	arrObj := array.(*object.Array)
+	idx := index.(*object.Integer).Value
+	max := int64(len(arrObj.Elements) - 1)
+	if idx < 0 || idx > max {
+		return NULL
+	}
+	return arrObj.Elements[idx]
 }
 
 func isTruthy(obj object.Object) bool {

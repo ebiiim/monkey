@@ -20,6 +20,7 @@ const (
 	FUNCTION_OBJ     = "FUNCTION"
 	STRING_OBJ       = "STRING"
 	BUILTIN_OBJ      = "BUILTIN"
+	ARRAY_OBJ        = "ARRAY"
 )
 
 type Object interface {
@@ -82,7 +83,7 @@ func (o *Function) Inspect() string {
 	for i, param := range o.Parameters {
 		fmt.Fprint(&out, param)
 		if i+1 != len(o.Parameters) {
-			fmt.Fprintf(&out, ", ")
+			fmt.Fprint(&out, ", ")
 		}
 	}
 	fmt.Fprint(&out, ") {\n")
@@ -105,3 +106,19 @@ var _ Object = (*Builtin)(nil)
 
 func (o *Builtin) Type() Type      { return BUILTIN_OBJ }
 func (o *Builtin) Inspect() string { return "builtin function" }
+
+type Array struct{ Elements []Object }
+
+var _ Object = (*Array)(nil)
+
+func (o *Array) Type() Type { return ARRAY_OBJ }
+func (o *Array) Inspect() string {
+	var out bytes.Buffer
+	fmt.Fprint(&out, "[")
+	for _, elem := range o.Elements {
+		fmt.Fprint(&out, elem)
+		fmt.Fprint(&out, ", ")
+	}
+	fmt.Fprint(&out, "]")
+	return out.String()
+}
