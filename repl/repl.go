@@ -46,14 +46,14 @@ func printParserErrors(out io.Writer, errors []error) {
 }
 
 func catchREPLCommands(out io.Writer, input string) string {
-	if len(input) == 0 || input[0] != '.' {
+	if len(input) == 0 || input[0] != ':' {
 		return input
 	}
 	ss := strings.Split(input, " ")
 	switch ss[0] {
-	case ".exit":
+	case ":exit", ":quit", ":q":
 		return exit(out)
-	case ".load":
+	case ":load", ":l":
 		if len(ss) < 2 {
 			return help(out)
 		}
@@ -64,7 +64,7 @@ func catchREPLCommands(out io.Writer, input string) string {
 }
 
 func help(out io.Writer) string {
-	fmt.Fprint(out, "\tREPL Commands: [ .exit | .load FILE ]\n")
+	fmt.Fprint(out, "REPL Commands:\n\t[ :exit | :quit | :q ] Quit the interpreter.\n\t[ :load FILE | :l FILE ] Load a Monkey source file.\n")
 	return ""
 }
 
