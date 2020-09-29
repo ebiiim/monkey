@@ -64,6 +64,12 @@ func TestBuiltinFunctions(t *testing.T) {
 		{`pop()`, evaluator.ErrTooFewArgs},
 		{`pop([1], [1])`, evaluator.ErrTooManyArgs},
 		{`pop(1)`, evaluator.ErrArrayNeeded},
+
+		{`puts()`, evaluator.NULL},
+		{`puts(1)`, evaluator.NULL},
+		{`puts(1, 2)`, evaluator.NULL},
+		{`puts(1, 2, 3)`, evaluator.NULL},
+		{`puts("hello", "world")`, evaluator.NULL},
 	}
 	for _, c := range cases {
 		t.Run(c.input, func(t *testing.T) {

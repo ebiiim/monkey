@@ -2,6 +2,7 @@ package evaluator
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/ebiiim/monkey/object"
 )
@@ -13,6 +14,7 @@ var builtins = map[string]*object.Builtin{
 	"rest":  {Fn: fnRest},
 	"push":  {Fn: fnPush},
 	"pop":   {Fn: fnPop},
+	"puts":  {Fn: fnPuts},
 }
 
 // Builtin function errors.
@@ -113,6 +115,13 @@ var fnPop = func(args ...object.Object) object.Object {
 	newArr := make([]object.Object, size-1, size-1)
 	copy(newArr, arr.Elements[0:size-1])
 	return &object.Array{Elements: newArr}
+}
+
+var fnPuts = func(args ...object.Object) object.Object {
+	for _, arg := range args {
+		fmt.Println(arg.Inspect())
+	}
+	return NULL
 }
 
 func hasNArgs(n int, args ...object.Object) object.Object {
