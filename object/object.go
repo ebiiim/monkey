@@ -116,7 +116,7 @@ func (o *Array) Inspect() string {
 	var out bytes.Buffer
 	fmt.Fprint(&out, "[")
 	for _, elem := range o.Elements {
-		fmt.Fprint(&out, elem)
+		fmt.Fprint(&out, elem.Inspect())
 		fmt.Fprint(&out, ", ")
 	}
 	fmt.Fprint(&out, "]")
